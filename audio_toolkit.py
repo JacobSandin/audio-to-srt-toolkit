@@ -3,6 +3,8 @@
 # Handles audio preprocessing, diarization, and SRT creation
 # 2025-04-23 -JS
 
+__version__ = "0.0.026"  # Version should match CHANGELOG.md
+
 import os
 import sys
 import logging
@@ -250,6 +252,13 @@ def parse_args():
         help='Enable debug logging'
     )
     
+    parser.add_argument(
+        '--version',
+        action='version',
+        version=f'Audio Toolkit v{__version__}',
+        help='Show version information and exit'
+    )
+    
     return parser.parse_args()
 
 
@@ -270,15 +279,25 @@ def process_audio(args):
     output_dir = os.path.abspath(args.output_dir)
     os.makedirs(output_dir, exist_ok=True)
     
+    # Generate timestamp for this run
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    
+    # Get input filename without extension
+    input_basename = os.path.splitext(os.path.basename(input_file))[0]
+    
+    # Create run subdirectory with timestamp
+    run_dir = os.path.join(output_dir, f"{timestamp}_{input_basename}")
+    os.makedirs(run_dir, exist_ok=True)
+    log(logging.INFO, f"Created output directory: {run_dir}")
+    
     # Generate output file name based on input file
-    input_basename = os.path.basename(input_file)
-    output_basename = os.path.splitext(input_basename)[0] + "_processed.wav"
-    output_file = os.path.join(output_dir, output_basename)
+    output_basename = os.path.splitext(os.path.basename(input_file))[0] + "_processed.wav"
+    output_file = os.path.join(run_dir, output_basename)
     
     # Create debug directory if debug mode is enabled
     debug_dir = None
     if args.debug:
-        debug_dir = os.path.join(output_dir, 'debug')
+        debug_dir = os.path.join(run_dir, 'debug')
         os.makedirs(debug_dir, exist_ok=True)
         log(logging.INFO, f"Debug mode enabled, intermediate files will be saved to {debug_dir}")
     
@@ -337,7 +356,7 @@ def process_audio(args):
         diarizer = SpeakerDiarizer(diarization_config)
         
         # Run diarization
-        diarization_segments = diarizer.diarize(input_file, output_dir)
+        diarization_segments = diarizer.diarize(input_file, run_dir)
         if not diarization_segments:
             log(logging.ERROR, "Diarization failed")
             return False
@@ -374,7 +393,7 @@ def process_audio(args):
             
             # Generate SRT file
             log(logging.INFO, "Generating SRT file...")
-            srt_file = os.path.join(output_dir, os.path.splitext(input_basename)[0] + ".srt")
+            srt_file = os.path.join(run_dir, os.path.splitext(input_basename)[0] + ".srt")
             if not srt_generator.generate_srt(
                 merged_segments, 
                 srt_file,
@@ -393,7 +412,7 @@ def process_audio(args):
 def check_dependencies():
     """
     Check that all required dependencies are installed.
-    Provides helpful error messages if dependencies are missing.
+    Provides helpful error messages if missing dependencies directly to console.
     
     Returns:
         bool: True if all dependencies are available, False otherwise
@@ -406,7 +425,9 @@ def check_dependencies():
         import torio
         log(logging.DEBUG, "Successfully imported torio")
     except ImportError as e:
-        log(logging.ERROR, f"Failed to import torio: {str(e)}")
+        error_msg = f"Failed to import torio: {str(e)}"
+        print(f"\033[91mERROR: {error_msg}\033[0m")  # Red text for error
+        log(logging.ERROR, error_msg)
         missing_deps.append("torio")
     
     # Check for FFmpeg libraries specifically
@@ -434,21 +455,35 @@ def check_dependencies():
                 if ffmpeg_found:
                     log(logging.DEBUG, "FFmpeg libraries found")
                 else:
-                    log(logging.WARNING, "FFmpeg command is available but libraries not found in standard locations")
+                    warning_msg = "FFmpeg command is available but libraries not found in standard locations"
+                    print(f"\033[93mWARNING: {warning_msg}\033[0m")  # Yellow text for warning
+                    print("\033[93mWARNING: This might cause issues with some audio processing functions\033[0m")
+                    log(logging.WARNING, warning_msg)
                     log(logging.WARNING, "This might cause issues with some audio processing functions")
             except (subprocess.SubprocessError, FileNotFoundError):
-                log(logging.ERROR, "FFmpeg command not found. Please install FFmpeg with:")
+                error_msg = "FFmpeg command not found. Please install FFmpeg with:"
+                print(f"\033[91mERROR: {error_msg}\033[0m")
+                print("\033[91m       sudo apt-get install ffmpeg libavutil-dev libavcodec-dev libavformat-dev\033[0m")
+                log(logging.ERROR, error_msg)
                 log(logging.ERROR, "sudo apt-get install ffmpeg libavutil-dev libavcodec-dev libavformat-dev")
                 missing_deps.append("ffmpeg")
         except OSError:
-            log(logging.ERROR, "Missing FFmpeg libraries. Please install them with:")
+            error_msg = "Missing FFmpeg libraries. Please install them with:"
+            print(f"\033[91mERROR: {error_msg}\033[0m")
+            print("\033[91m       sudo apt-get install ffmpeg libavutil-dev libavcodec-dev libavformat-dev\033[0m")
+            log(logging.ERROR, error_msg)
             log(logging.ERROR, "sudo apt-get install ffmpeg libavutil-dev libavcodec-dev libavformat-dev")
             missing_deps.append("ffmpeg-libs")
     except ImportError:
-        log(logging.WARNING, "Could not check for FFmpeg libraries (ctypes not available)")
+        warning_msg = "Could not check for FFmpeg libraries (ctypes not available)"
+        print(f"\033[93mWARNING: {warning_msg}\033[0m")
+        log(logging.WARNING, warning_msg)
     
     if missing_deps:
-        log(logging.ERROR, f"Missing dependencies: {', '.join(missing_deps)}")
+        error_msg = f"Missing dependencies: {', '.join(missing_deps)}"
+        print(f"\033[91mERROR: {error_msg}\033[0m")
+        print("\033[91mERROR: Please install the missing dependencies and try again\033[0m")
+        log(logging.ERROR, error_msg)
         log(logging.ERROR, "Please install the missing dependencies and try again")
         return False
     
@@ -468,6 +503,7 @@ def main():
     
     # Check dependencies before proceeding
     if not check_dependencies():
+        print("\033[91m\nDependency check failed. Please see the FAQ.md file for detailed solutions.\033[0m")
         log(logging.ERROR, "Dependency check failed. Please install the missing dependencies.")
         sys.exit(1)
     

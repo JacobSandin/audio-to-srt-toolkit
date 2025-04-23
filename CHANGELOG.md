@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.026] - 2025-04-23
+
+### Added
+- Implemented timestamp-based output subdirectories for each run
+- Each run now creates a unique directory with format "YYYYMMDD_HHMMSS_filename"
+- Prevents overwriting previous outputs and allows comparing different processing configurations
+- All output files (processed audio, SRT, segments) now stored in run-specific directories
+- Debug files are now stored in a debug subdirectory within each run directory
+
+## [0.0.025] - 2025-04-23
+
+### Added
+- Created dedicated FAQ.md file with comprehensive troubleshooting information
+- Improved console output with colored text for errors, warnings, and progress updates
+- Enhanced dependency checking to print messages directly to console
+- Added support for multiple FFmpeg library versions (libavutil.so.56/57/58)
+- Updated progress reporting to show real-time updates in the console
+
 ## [0.0.024] - 2025-04-23
 
 ### Added

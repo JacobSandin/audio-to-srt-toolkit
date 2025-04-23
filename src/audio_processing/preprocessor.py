@@ -48,13 +48,14 @@ class AudioPreprocessor:
     
     def log(self, level, *messages, **kwargs):
         """
-        Unified logging function.
+        Unified logging function with console output for progress and important messages.
         
         Args:
             level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
             messages: Messages to log
             kwargs: Additional logging parameters
         """
+        # Log to file
         if level == logging.DEBUG:
             self.logger.debug(*messages, **kwargs)
         elif level == logging.INFO:
@@ -65,6 +66,19 @@ class AudioPreprocessor:
             self.logger.error(*messages, **kwargs)
         elif level == logging.CRITICAL:
             self.logger.critical(*messages, **kwargs)
+            
+        # Also print progress and important messages to console
+        msg = " ".join(str(m) for m in messages)
+        
+        # Print progress updates directly to console
+        if "progress" in msg.lower() or "compression progress" in msg.lower() or "demucs progress" in msg.lower():
+            print(f"\033[96m{msg}\033[0m")  # Cyan color for progress
+        # Print errors in red
+        elif level == logging.ERROR or level == logging.CRITICAL:
+            print(f"\033[91mERROR: {msg}\033[0m")
+        # Print warnings in yellow
+        elif level == logging.WARNING:
+            print(f"\033[93mWARNING: {msg}\033[0m")
     
     def convert_to_wav(self, input_file, output_file, bit_depth=24, sample_rate=48000):
         """
