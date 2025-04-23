@@ -70,7 +70,7 @@
 - Prepend classes with comments
 - Prepend modules with comments
 - Use comments to explain the logic of the code
-- Write timestamp together with -JS at end of comment for when it was added
+- Write timestamp together with "- JS" at end of _any_ comment when it is added or changed
 
 # Incorporate logging
 - log through one function log((self, level, *messages, **kwargs))
@@ -113,6 +113,12 @@
 # Documentation
 - Always maintain README.md
 - Always update CHANGELOG.md
+- NEVER commit code changes without first updating documentation
+- Update README.md with any new features, scripts, or usage instructions
+- Update CHANGELOG.md with all changes made in the current commit
+- Documentation updates must be committed in the same commit as code changes
+- Run git add on documentation files before code files
+- Verify documentation changes before committing code changes
 - Both README.md and CHANGELOG.md should be updated before every commit
 
 # Command Line Behavior
@@ -127,20 +133,13 @@
 - x and y are incremented when user asks you too
 - Use [0.0.000] - Former Unreleased for features not yet in a release
 - Place unreleased changes at the bottom of the file
-- Group changes under headings: Added, Changed, Fixed, Removed
-- Each entry should be a single line starting with a hyphen
-- Increment version numbers according to semantic versioning principles
-- Use Markdown formatting for consistency
 
-# Pre-commit checklist
-- All project-specific sections have "This project:" prefix
-- Version format in CHANGELOG.md is [x.y.zzz] (three digits after second dot)
-- README.md is up to date
-- CHANGELOG.md is up to date with latest changes
-- All tests pass
-- No temporary files remain
-- Commit message is meaningful and descriptive
-
-# Test commands you run
+# Before committing
+- README.md is up to date with latest features and changes
+- CHANGELOG.md is up to date with latest changes and correct version number
+- All tests pass with run_tests.py
+- No temporary files are left in the repository
+- Documentation changes are staged before code changes
+- Documentation accurately reflects the latest code changes
+- No sensitive information is included in the commit
 - make sure you get output with commands, adding echo "Command failed" or echo "Command succeeded" after commands if needed
-- using "if test $status -eq 0" instead of "if [ $? -eq 0 ]"
