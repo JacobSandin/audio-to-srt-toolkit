@@ -111,6 +111,8 @@ class TestDebugOutput(unittest.TestCase):
         args.input_audio = self.input_file
         args.output_dir = self.output_dir
         args.skip_preprocessing = False
+        args.skip_diarization = True
+        args.skip_srt = True
         args.highpass = 150
         args.lowpass = 8000
         args.compression_threshold = -10.0
@@ -120,7 +122,6 @@ class TestDebugOutput(unittest.TestCase):
         args.sample_rate = 48000
         args.quiet = False
         args.debug = True
-        args.diarize = False
         args.min_speakers = 2
         args.max_speakers = 4
         args.clustering_threshold = 0.65

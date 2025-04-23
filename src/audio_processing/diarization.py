@@ -107,11 +107,34 @@ class SpeakerDiarizer:
         try:
             self.log(logging.INFO, "Loading diarization model...")
             
-            # Define models to try in order of preference
-            diarization_models = [
-                "tensorlake/speaker-diarization-3.1",  # Preferred model for Swedish dialects
-                "pyannote/speaker-diarization-3.1"    # Fallback model
-            ]
+            # Get diarization models from config or use defaults
+            diarization_models = []
+            
+            # Try to get models from new config structure first
+            if 'models' in self.config and 'diarization' in self.config['models']:
+                # Add primary models
+                if 'primary' in self.config['models']['diarization']:
+                    diarization_models.extend(self.config['models']['diarization']['primary'])
+                
+                # Add fallback models
+                if 'fallback' in self.config['models']['diarization']:
+                    diarization_models.extend(self.config['models']['diarization']['fallback'])
+            
+            # Fallback to old config structure if needed
+            elif 'models' in self.config:
+                if 'primary' in self.config['models']:
+                    diarization_models.extend(self.config['models']['primary'])
+                if 'fallback' in self.config['models']:
+                    diarization_models.extend(self.config['models']['fallback'])
+            
+            # Use hardcoded defaults if no models found in config
+            if not diarization_models:
+                diarization_models = [
+                    "tensorlake/speaker-diarization-3.1",  # Preferred model for Swedish dialects
+                    "pyannote/speaker-diarization-3.1"    # Fallback model
+                ]
+                
+            self.log(logging.INFO, f"Using diarization models: {diarization_models}")
             
             # Try loading models in order of preference
             for model_name in diarization_models:
@@ -166,11 +189,34 @@ class SpeakerDiarizer:
             # Load VAD pipeline
             self.log(logging.INFO, "Loading Voice Activity Detection (VAD) model...")
             
-            # Define VAD models to try in order of preference
-            vad_models = [
-                "pyannote/voice-activity-detection",
-                "pyannote/segmentation-3.0"
-            ]
+            # Get VAD models from config or use defaults
+            vad_models = []
+            
+            # Try to get models from new config structure first
+            if 'models' in self.config and 'vad' in self.config['models']:
+                # Add primary models
+                if 'primary' in self.config['models']['vad']:
+                    vad_models.extend(self.config['models']['vad']['primary'])
+                
+                # Add fallback models
+                if 'fallback' in self.config['models']['vad']:
+                    vad_models.extend(self.config['models']['vad']['fallback'])
+            
+            # Fallback to old config structure if needed
+            elif 'models' in self.config and 'additional' in self.config['models']:
+                # Filter for VAD models in the additional list
+                for model in self.config['models']['additional']:
+                    if 'voice-activity-detection' in model or 'vad' in model.lower():
+                        vad_models.append(model)
+            
+            # Use hardcoded defaults if no models found in config
+            if not vad_models:
+                vad_models = [
+                    "pyannote/voice-activity-detection",
+                    "pyannote/segmentation-3.0"
+                ]
+                
+            self.log(logging.INFO, f"Using VAD models: {vad_models}")
             
             # Try loading VAD models in order of preference
             self.vad_pipeline = None
@@ -198,10 +244,54 @@ class SpeakerDiarizer:
             # Try to load segmentation model
             try:
                 self.log(logging.INFO, "Loading segmentation model...")
-                self.segmentation_pipeline = Pipeline.from_pretrained(
-                    "pyannote/segmentation-3.0",
-                    use_auth_token=self.huggingface_token
-                )
+                
+                # Get segmentation models from config or use defaults
+                segmentation_models = []
+                
+                # Try to get models from new config structure first
+                if 'models' in self.config and 'segmentation' in self.config['models']:
+                    # Add primary models
+                    if 'primary' in self.config['models']['segmentation']:
+                        segmentation_models.extend(self.config['models']['segmentation']['primary'])
+                    
+                    # Add fallback models
+                    if 'fallback' in self.config['models']['segmentation']:
+                        segmentation_models.extend(self.config['models']['segmentation']['fallback'])
+                
+                # Fallback to old config structure if needed
+                elif 'models' in self.config and 'additional' in self.config['models']:
+                    # Filter for segmentation models in the additional list
+                    for model in self.config['models']['additional']:
+                        if 'segmentation' in model:
+                            segmentation_models.append(model)
+                
+                # Use hardcoded defaults if no models found in config
+                if not segmentation_models:
+                    segmentation_models = [
+                        "pyannote/segmentation-3.0",
+                        "HiTZ/pyannote-segmentation-3.0-RTVE"
+                    ]
+                    
+                self.log(logging.INFO, f"Using segmentation models: {segmentation_models}")
+                
+                # Try loading segmentation models in order of preference
+                self.segmentation_pipeline = None
+                for model_name in segmentation_models:
+                    try:
+                        self.log(logging.INFO, f"Trying to load segmentation model: {model_name}")
+                        self.segmentation_pipeline = Pipeline.from_pretrained(
+                            model_name,
+                            use_auth_token=self.huggingface_token
+                        )
+                        self.log(logging.INFO, f"Successfully loaded segmentation model: {model_name}")
+                        break
+                    except Exception as e:
+                        self.log(logging.WARNING, f"Failed to load {model_name}: {str(e)}")
+                        continue
+                        
+                # If we couldn't load any model, raise an exception to be caught below
+                if self.segmentation_pipeline is None:
+                    raise ValueError("Failed to load any segmentation model")
                 
                 # Move segmentation to GPU if available
                 if self.use_gpu and torch.cuda.is_available():

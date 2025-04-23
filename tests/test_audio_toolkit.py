@@ -95,6 +95,8 @@ class TestAudioToolkitCLI(unittest.TestCase):
             args.input_audio = test_file
             args.output_dir = self.output_dir
             args.skip_preprocessing = False
+            args.skip_diarization = False
+            args.skip_srt = False
             args.highpass = 150
             args.lowpass = 8000
             args.compression_threshold = -10.0

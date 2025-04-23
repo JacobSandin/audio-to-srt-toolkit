@@ -64,7 +64,8 @@ class TestDiarizationIntegration(unittest.TestCase):
         args.input_audio = self.input_file
         args.output_dir = self.output_dir
         args.skip_preprocessing = False
-        args.diarize = True
+        args.skip_diarization = False
+        args.skip_srt = True  # Not generating SRT in this test
         args.min_speakers = 2
         args.max_speakers = 4
         args.clustering_threshold = 0.65
@@ -77,8 +78,6 @@ class TestDiarizationIntegration(unittest.TestCase):
         args.sample_rate = 48000
         args.quiet = False
         args.debug = True
-        args.generate_srt = False
-        args.include_timestamps = False
         args.speaker_format = "{speaker}:"
         args.max_gap = 1.0
         args.max_duration = 10.0
@@ -120,7 +119,8 @@ class TestDiarizationIntegration(unittest.TestCase):
         args.input_audio = self.input_file
         args.output_dir = self.output_dir
         args.skip_preprocessing = False
-        args.diarize = True
+        args.skip_diarization = False
+        args.skip_srt = True  # Not generating SRT in this test
         args.min_speakers = 3
         args.max_speakers = 5
         args.clustering_threshold = 0.7
@@ -176,7 +176,8 @@ class TestDiarizationIntegration(unittest.TestCase):
         args.input_audio = self.input_file
         args.output_dir = self.output_dir
         args.skip_preprocessing = True
-        args.diarize = True
+        args.skip_diarization = False
+        args.skip_srt = True  # Not generating SRT in this test
         args.min_speakers = 2
         args.max_speakers = 4
         args.clustering_threshold = 0.65

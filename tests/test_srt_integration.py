@@ -77,8 +77,8 @@ class TestSRTIntegration(unittest.TestCase):
         args.input_audio = self.input_file
         args.output_dir = self.output_dir
         args.skip_preprocessing = False
-        args.diarize = True
-        args.generate_srt = True
+        args.skip_diarization = False
+        args.skip_srt = False
         args.include_timestamps = True
         args.speaker_format = "{speaker}:"
         args.max_gap = 1.0
@@ -150,8 +150,8 @@ class TestSRTIntegration(unittest.TestCase):
         args.input_audio = self.input_file
         args.output_dir = self.output_dir
         args.skip_preprocessing = False
-        args.diarize = True
-        args.generate_srt = True
+        args.skip_diarization = False
+        args.skip_srt = False
         args.include_timestamps = False
         args.speaker_format = "Person {speaker_id}:"
         args.max_gap = 1.0

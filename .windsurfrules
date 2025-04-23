@@ -20,13 +20,26 @@ audio_processing:
   authentication:
     huggingface_token: Use environment variable HF_TOKEN for authentication
   models:
-    primary:
-      - tensorlake/speaker-diarization-3.1  # Preferred for Swedish dialects
-    fallback:
-      - pyannote/speaker-diarization-3.1
-    additional:
-      - pyannote/segmentation-3.0
-      - pyannote/voice-activity-detection
+    # Speaker diarization models
+    diarization:
+      primary:
+        - tensorlake/speaker-diarization-3.1  # Preferred for Swedish dialects
+      fallback:
+        - pyannote/speaker-diarization-3.1
+    
+    # Voice Activity Detection (VAD) models
+    vad:
+      primary:
+        - pyannote/voice-activity-detection
+      fallback:
+        - pyannote/segmentation-3.0
+    
+    # Audio segmentation models
+    segmentation:
+      primary:
+        - HiTZ/pyannote-segmentation-3.0-RTVE
+      fallback:
+        - pyannote/segmentation-3.0
   parameters:
     min_speakers: 2
     max_speakers: 4
@@ -87,6 +100,11 @@ workflow:
     - never_modify_tests_to_pass_code
     - code_must_pass_tests
     - verify_all_tests_pass_before_commit
+    # New rules to enforce TDD
+    - run_tests_before_any_implementation
+    - document_test_first_approach_in_commits
+    - separate_test_commits_from_implementation
+    - update_tests_before_updating_code
   structure:
     new_features: src/ directory with proper module structure
     tests: tests/ directory matching src/ structure
@@ -95,6 +113,13 @@ workflow:
     - ask_about_directory_for_new_files
     - wait_for_confirmation_before_implementation
     - verify_understanding_before_implementation
+  tdd_workflow:
+    1: "Write failing test for new feature or bug fix"
+    2: "Commit test with message 'TDD: Add test for [feature]'"
+    3: "Verify test fails for expected reason"
+    4: "Implement code to make test pass"
+    5: "Run all tests to ensure no regressions"
+    6: "Commit implementation with message 'Implement [feature]'"
 
 # Code Quality Standards
 code_quality:
@@ -129,6 +154,33 @@ testing:
     - avoid_static_files
     - never_edit_tests_to_pass
     - code_passes_tests_not_tests_pass_code
+  documentation:
+    - document_test_strategy_in_test_files
+    - include_test_coverage_in_changelog
+    - maintain_test_plan_document
+  test_naming:
+    - use_descriptive_test_names
+    - group_tests_by_feature
+    - name_format: test_<functionality>_<scenario>
+  test_verification:
+    - run_tests_before_commit: "python -m pytest"
+    - verify_test_coverage: "pytest --cov=src"
+    - fail_on_test_regression
+
+# Testing Enforcement
+testing_enforcement:
+  pre_commit_hooks:
+    - run_all_tests_before_commit
+    - block_commit_on_test_failure
+    - require_test_files_for_new_features
+  test_validation:
+    - verify_test_timestamp_newer_than_implementation
+    - require_test_coverage_minimum: 80%
+    - fail_build_on_test_regression
+  automation:
+    - setup_pre_commit_hook: "pytest || exit 1"
+    - add_test_coverage_report: "pytest --cov=src tests/"
+    - enforce_test_first_workflow
 
 # Documentation Standards
 documentation:
