@@ -11,8 +11,16 @@
 *.segments
 *.srt
 *.vtt
-*.txt
-*.json
+
+# Exclude personal data files but keep code
+/old_tests/*.segments
+/old_tests/*.srt
+/old_tests/*.vtt
+/old_tests/*.txt
+/old_tests/*.json
+
+# But include Python files
+!*.py
 
 # Model cache and checkpoints
 cache/

@@ -128,3 +128,6 @@
 - All tests pass
 - No temporary files remain
 - Commit message is meaningful and descriptive
+
+# Test commands you run
+- using "if test $status -eq 0" instead of "if [ $? -eq 0 ]"
