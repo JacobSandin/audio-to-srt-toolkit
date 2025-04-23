@@ -292,13 +292,26 @@ class AudioPreprocessor:
             # Get the order prefix or use "99" if step_name is not in the dictionary
             order_prefix = step_order.get(step_name, "99")
             
-            # Create debug filename with order prefix
-            debug_filename = f"{order_prefix}_{step_name}_{base_name}.wav"
-            debug_path = os.path.join(self.debug_dir, debug_filename)
-            
-            # Export debug file in WAV format for better quality
-            audio.export(debug_path, format="wav")  # 2025-04-23 - JS
-            self.log(logging.DEBUG, f"Saved debug file for {step_name}: {debug_path}")
+            # For wav_conversion step, create a symbolic link instead of duplicating the large file
+            # This saves disk space while still providing the debug file for analysis
+            if step_name == "wav_conversion" and os.path.exists(input_file) and input_file.endswith(".wav"):
+                # Create debug filename with order prefix
+                debug_filename = f"{order_prefix}_{step_name}_{base_name}.wav"
+                debug_path = os.path.join(self.debug_dir, debug_filename)
+                
+                # Create a symbolic link to the original file instead of exporting a new one
+                if os.path.exists(debug_path):
+                    os.remove(debug_path)  # Remove existing link if it exists
+                os.symlink(os.path.abspath(input_file), debug_path)
+                self.log(logging.DEBUG, f"Created symbolic link for {step_name}: {debug_path} -> {input_file}")
+            else:
+                # For all other steps, create a regular debug file
+                debug_filename = f"{order_prefix}_{step_name}_{base_name}.wav"
+                debug_path = os.path.join(self.debug_dir, debug_filename)
+                
+                # Export debug file in WAV format for better quality
+                audio.export(debug_path, format="wav")  # 2025-04-23 - JS
+                self.log(logging.DEBUG, f"Saved debug file for {step_name}: {debug_path}")
             
         except Exception as e:
             self.log(logging.WARNING, f"Failed to save debug file for {step_name}: {str(e)}")

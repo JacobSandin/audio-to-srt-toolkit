@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.051] - 2025-04-23
+
+### Fixed
+- Optimized debug file storage to avoid duplicate large WAV files
+- Used symbolic links for WAV conversion debug files to save disk space
+- Prevented creation of redundant copies of large audio files
+
 ## [0.0.050] - 2025-04-23
 
 ### Fixed
