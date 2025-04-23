@@ -346,49 +346,49 @@ def process_audio(args):
         
         # Generate SRT file if requested
         if args.generate_srt:
-            log(logging.INFO, "Generating SRT subtitle file")
+            print("\n=== Generating SRT subtitle file ===\n")
             
-            # Import SRT generator
-            from src.audio_processing.srt_generator import SRTGenerator
-            
-            # Configure SRT generator
-            srt_config = {
-                'debug': args.debug,
-                'debug_dir': debug_dir if args.debug else None
-            }
-            
-            srt_generator = SRTGenerator(srt_config)
-            
-            # Get diarization results from the diarizer
+            # Get diarization result
+            print("Extracting diarization segments...")
             diarization_result = diarizer.get_diarization_result()
             
-            if not diarization_result:
-                log(logging.WARNING, "No diarization results available for SRT generation")
-            else:
-                # Merge segments if needed
-                if args.max_gap > 0 or args.max_duration > 0:
-                    log(logging.INFO, f"Merging segments (max_gap={args.max_gap}s, max_duration={args.max_duration}s)")
-                    diarization_result = srt_generator.merge_segments(
-                        diarization_result,
-                        max_gap=args.max_gap,
-                        max_duration=args.max_duration
-                    )
-                
-                # Generate SRT file
-                base_name = os.path.splitext(os.path.basename(input_file))[0]
-                srt_file = os.path.join(output_dir, f"{base_name}.srt")
-                
-                srt_result = srt_generator.generate_srt(
-                    diarization_result,
-                    srt_file,
-                    speaker_format=args.speaker_format,
-                    include_timestamps=args.include_timestamps
-                )
-                
-                if srt_result:
-                    log(logging.INFO, f"SRT file generated successfully: {srt_file}")
-                else:
-                    log(logging.ERROR, "Failed to generate SRT file")
+            # Create SRT generator
+            srt_config = {
+                'include_timestamps': args.include_timestamps,
+                'speaker_format': args.speaker_format,
+                'max_gap': args.max_gap,
+                'max_duration': args.max_duration
+            }
+            
+            print(f"SRT configuration: include_timestamps={args.include_timestamps}, speaker_format='{args.speaker_format}',")
+            print(f"                   max_gap={args.max_gap}s, max_duration={args.max_duration}s")
+            
+            from src.audio_processing.srt_generator import SRTGenerator
+            srt_generator = SRTGenerator(srt_config)
+            
+            # Merge segments if needed
+            print(f"Merging segments (max_gap={args.max_gap}s, max_duration={args.max_duration}s)...")
+            merged_segments = srt_generator.merge_segments(
+                diarization_result,
+                max_gap=args.max_gap,
+                max_duration=args.max_duration
+            )
+            
+            # Generate SRT file
+            print("Generating SRT file...")
+            base_name = os.path.splitext(os.path.basename(input_file))[0]
+            srt_file = os.path.join(output_dir, f"{base_name}.srt")
+            if not srt_generator.generate_srt(
+                merged_segments, 
+                srt_file,
+                speaker_format=args.speaker_format,
+                include_timestamps=args.include_timestamps
+            ):
+                print(f"Error: SRT generation failed")
+                return False
+            
+            print(f"\nSRT file generated successfully: {srt_file}")
+            print("\n=== SRT generation completed ===\n")
     
     return True
 

@@ -16,6 +16,9 @@ import datetime
 import matplotlib.pyplot as plt
 import json
 
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
 # Filter out specific warnings from torchaudio and other libraries
 warnings.filterwarnings("ignore", message="torchaudio._backend.*has been deprecated")
 warnings.filterwarnings("ignore", message="Module 'speechbrain.pretrained' was deprecated")
@@ -104,11 +107,30 @@ class SpeakerDiarizer:
         try:
             self.log(logging.INFO, "Loading diarization model...")
             
-            # Load the latest diarization pipeline
-            self.diarization_pipeline = Pipeline.from_pretrained(
-                "pyannote/speaker-diarization-3.1",
-                use_auth_token=self.huggingface_token
-            )
+            # Define models to try in order of preference
+            diarization_models = [
+                "tensorlake/speaker-diarization-3.1",  # Preferred model for Swedish dialects
+                "pyannote/speaker-diarization-3.1"    # Fallback model
+            ]
+            
+            # Try loading models in order of preference
+            for model_name in diarization_models:
+                try:
+                    self.log(logging.INFO, f"Trying to load diarization model: {model_name}")
+                    self.diarization_pipeline = Pipeline.from_pretrained(
+                        model_name,
+                        use_auth_token=self.huggingface_token
+                    )
+                    self.log(logging.INFO, f"Successfully loaded diarization model: {model_name}")
+                    break
+                except Exception as e:
+                    self.log(logging.WARNING, f"Failed to load {model_name}: {str(e)}")
+                    continue
+            
+            # Check if any model was loaded
+            if self.diarization_pipeline is None:
+                self.log(logging.ERROR, "Failed to load any diarization model")
+                return False
             
             # Optimize GPU usage if available
             if self.use_gpu and torch.cuda.is_available():
@@ -131,16 +153,37 @@ class SpeakerDiarizer:
                 torch.cuda.empty_cache()
                 torch.cuda.memory.set_per_process_memory_fraction(0.95)  # Use up to 95% of GPU memory
             
-            # Load VAD model
-            self.log(logging.INFO, "Loading Voice Activity Detection model...")
-            self.vad_pipeline = Pipeline.from_pretrained(
-                "pyannote/voice-activity-detection",
-                use_auth_token=self.huggingface_token
-            )
+            # Load VAD pipeline
+            self.log(logging.INFO, "Loading Voice Activity Detection (VAD) model...")
             
-            # Move VAD to GPU if available
-            if self.use_gpu and torch.cuda.is_available():
-                self.vad_pipeline.to(torch.device("cuda"))
+            # Define VAD models to try in order of preference
+            vad_models = [
+                "pyannote/voice-activity-detection",
+                "pyannote/segmentation-3.0"
+            ]
+            
+            # Try loading VAD models in order of preference
+            self.vad_pipeline = None
+            for model_name in vad_models:
+                try:
+                    self.log(logging.INFO, f"Trying to load VAD model: {model_name}")
+                    self.vad_pipeline = Pipeline.from_pretrained(
+                        model_name,
+                        use_auth_token=self.huggingface_token
+                    )
+                    self.log(logging.INFO, f"Successfully loaded VAD model: {model_name}")
+                    break
+                except Exception as e:
+                    self.log(logging.WARNING, f"Failed to load {model_name}: {str(e)}")
+                    continue
+            
+            # Check if any VAD model was loaded
+            if self.vad_pipeline is None:
+                self.log(logging.WARNING, "Failed to load any VAD model, continuing without VAD")
+            else:
+                # Move VAD to GPU if available
+                if self.use_gpu and torch.cuda.is_available():
+                    self.vad_pipeline.to(torch.device("cuda"))
             
             # Try to load segmentation model
             try:

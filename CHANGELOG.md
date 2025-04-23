@@ -29,6 +29,8 @@ All notable changes to this project will be documented in this file.
 - SRT subtitle file generation from diarization results
 - Command-line arguments for SRT generation (--generate-srt, --include-timestamps, --speaker-format, --max-gap, --max-duration)
 - Segment merging functionality to combine consecutive segments from the same speaker
+- Enhanced model loading with multiple model support (tensorlake/speaker-diarization-3.1 as primary model)
+- Improved progress reporting during diarization and SRT generation
 
 ### Changed
 - Changed output format from MP3 to WAV to maintain high audio quality throughout the processing pipeline
