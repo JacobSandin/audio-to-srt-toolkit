@@ -129,6 +129,7 @@ class TestAudioToolkitCLI(unittest.TestCase):
         args = Args()
         args.debug = True
         args.quiet = False
+        args.debug_files_only = False
         
         # Patch logging.basicConfig to verify it's called
         with patch('logging.basicConfig') as mock_log_config:

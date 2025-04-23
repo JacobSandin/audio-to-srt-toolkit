@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.044] - 2025-04-23
+
+### Added
+- Added `--debug-files-only` command-line switch to enable debug logging to files without console output
+- Created test suite for the new debug files only functionality
+
 ## [0.0.043] - 2025-04-23
 
 ### Added

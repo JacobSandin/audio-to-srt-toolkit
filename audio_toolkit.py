@@ -3,7 +3,7 @@
 # Handles audio preprocessing, diarization, and SRT creation
 # 2025-04-23 -JS
 
-__version__ = "0.0.041"  # Version should match CHANGELOG.md
+__version__ = "0.0.044"  # Version should match CHANGELOG.md
 
 import os
 import sys
@@ -88,7 +88,7 @@ def setup_logging(args):
     log_file = os.path.join(logs_dir, f'audio-toolkit-{timestamp}.log')
     
     # Set up logging level based on arguments
-    if args.debug:
+    if args.debug or args.debug_files_only:
         log_level = logging.DEBUG
     elif args.quiet:
         log_level = logging.WARNING
@@ -99,9 +99,14 @@ def setup_logging(args):
     file_handler = logging.FileHandler(log_file)
     file_handler.addFilter(ProgressBarFilter())  # Add filter to suppress progress bars
     
-    # Create console handler (if not quiet)
-    console_handler = logging.StreamHandler() if not args.quiet else logging.NullHandler()
-    console_handler.addFilter(ProgressBarFilter())  # Add filter to console output too
+    # Create console handler
+    if args.quiet or args.debug_files_only:
+        # No console output if quiet or debug-files-only
+        console_handler = logging.NullHandler()
+    else:
+        # Normal console output
+        console_handler = logging.StreamHandler()
+        console_handler.addFilter(ProgressBarFilter())  # Add filter to console output
     
     # Configure logging
     logging.basicConfig(
@@ -266,7 +271,13 @@ def parse_args():
     parser.add_argument(
         '--debug',
         action='store_true',
-        help='Enable debug logging'
+        help='Enable debug logging to both console and files'
+    )
+    
+    parser.add_argument(
+        '--debug-files-only',
+        action='store_true',
+        help='Enable debug logging to files only (no console debug output)'
     )
     
     parser.add_argument(
