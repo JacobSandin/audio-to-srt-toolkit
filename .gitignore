@@ -22,10 +22,12 @@
 # Configuration files with sensitive information
 config.yaml
 
-# Exclude debug and log directories
+# Exclude debug, log, and output directories
 /logs/
 /debug/
 **/debug/
+/out/
+**/out/
 
 # But include Python files
 !*.py
