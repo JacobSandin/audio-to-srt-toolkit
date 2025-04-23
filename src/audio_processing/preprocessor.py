@@ -9,6 +9,7 @@ import logging
 import subprocess
 import tempfile
 import datetime
+import time
 import shutil
 from pydub import AudioSegment, effects
 import numpy as np
@@ -196,16 +197,30 @@ class AudioPreprocessor:
         Returns:
             bool: True if separation was successful, False otherwise
         """
-        self.log(logging.INFO, f"Separating vocals from {input_file}")
-        success = self._run_demucs(input_file, output_file)
+        self.log(logging.INFO, f"Starting vocal separation process on {input_file}")
+        self.log(logging.INFO, f"Using Demucs to extract vocals from background elements...")
         
-        # Save debug file for vocals if successful
-        if success and self.debug_mode and self.debug_dir:
+        # Run Demucs for vocal separation
+        start_time = time.time()
+        success = self._run_demucs(input_file, output_file)
+        end_time = time.time()
+        
+        if success:
+            self.log(logging.INFO, f"Vocal separation completed successfully in {end_time - start_time:.2f} seconds")
+            
+            # Get info about the separated vocals file
             try:
                 vocals_audio = AudioSegment.from_file(output_file)
-                self._save_debug_file(vocals_audio, input_file, "vocals")
+                duration_sec = len(vocals_audio) / 1000
+                self.log(logging.INFO, f"Extracted vocals: {duration_sec:.2f} seconds, {vocals_audio.frame_rate}Hz, {vocals_audio.channels} channels")
+                
+                # Save debug file for vocals if in debug mode
+                if self.debug_mode and self.debug_dir:
+                    self._save_debug_file(vocals_audio, input_file, "vocals")
             except Exception as e:
-                self.log(logging.WARNING, f"Failed to save debug file for vocals: {str(e)}")
+                self.log(logging.WARNING, f"Failed to get info about separated vocals: {str(e)}")
+        else:
+            self.log(logging.ERROR, f"Vocal separation failed after {end_time - start_time:.2f} seconds")
                 
         return success
     
@@ -257,24 +272,36 @@ class AudioPreprocessor:
             self.log(logging.INFO, f"Processing audio: {input_file}")
             
             # Load audio
+            self.log(logging.INFO, f"Loading audio file: {input_file}")
             audio = AudioSegment.from_file(input_file)
             sample_rate = audio.frame_rate
+            self.log(logging.INFO, f"Audio loaded: {len(audio)/1000:.2f} seconds, {sample_rate}Hz sample rate")
             
             # Apply processing steps and save debug files for each step
+            self.log(logging.INFO, f"Applying high-pass filter (cutoff: {self.highpass_cutoff}Hz)...")
             audio = self.apply_highpass(audio, cutoff=self.highpass_cutoff, sample_rate=sample_rate)
             self._save_debug_file(audio, input_file, "highpass")
+            self.log(logging.INFO, f"High-pass filter applied successfully")
             
+            self.log(logging.INFO, f"Applying low-pass filter (cutoff: {self.lowpass_cutoff}Hz)...")
             audio = self.apply_lowpass(audio, cutoff=self.lowpass_cutoff, sample_rate=sample_rate)
             self._save_debug_file(audio, input_file, "lowpass")
+            self.log(logging.INFO, f"Low-pass filter applied successfully")
             
+            self.log(logging.INFO, f"Applying compression (threshold: {self.compression_threshold}dB, ratio: {self.compression_ratio})...")
             audio = self.apply_compression(audio)
             self._save_debug_file(audio, input_file, "compression")
+            self.log(logging.INFO, f"Compression applied successfully")
             
+            self.log(logging.INFO, f"Normalizing audio levels...")
             audio = self.normalize(audio)
             self._save_debug_file(audio, input_file, "normalize")
+            self.log(logging.INFO, f"Normalization completed successfully")
             
+            self.log(logging.INFO, f"Adjusting volume (gain: {self.default_gain}dB)...")
             audio = self.adjust_volume(audio, gain_db=self.default_gain)
             self._save_debug_file(audio, input_file, "volume")
+            self.log(logging.INFO, f"Volume adjustment completed successfully")
             
             # Export processed audio in WAV format for better quality
             audio.export(output_file, format="wav")
@@ -367,29 +394,68 @@ class AudioPreprocessor:
             bool: True if demucs ran successfully, False otherwise
         """
         try:
-            self.log(logging.INFO, "Running demucs for vocal separation")
+            self.log(logging.INFO, "Initializing Demucs for vocal separation")
+            
+            # Get input file info for better progress reporting
+            try:
+                input_audio = AudioSegment.from_file(input_file)
+                duration_sec = len(input_audio) / 1000
+                self.log(logging.INFO, f"Input audio: {duration_sec:.2f} seconds, {input_audio.frame_rate}Hz, {input_audio.channels} channels")
+                self.log(logging.INFO, f"Estimated processing time: {duration_sec/60:.1f} minutes (varies by CPU/GPU speed)")
+            except Exception as e:
+                self.log(logging.WARNING, f"Could not get input file info: {str(e)}")
             
             # Create a temporary directory for demucs output
             with tempfile.TemporaryDirectory() as temp_dir:
-                # Run demucs command
+                # Run demucs command with verbose output
+                self.log(logging.INFO, "Starting Demucs model - separating vocals from background...")
                 cmd = [
                     "demucs", 
-                    "--two-stems=vocals", 
+                    "--two-stems=vocals",
+                    "--verbose", # Enable verbose output
                     "-o", temp_dir,
                     input_file
                 ]
                 
                 self.log(logging.DEBUG, f"Running command: {' '.join(cmd)}")
+                
+                # Start process with real-time output monitoring
                 process = subprocess.Popen(
                     cmd,
                     stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE
+                    stderr=subprocess.STDOUT,  # Redirect stderr to stdout for unified output
+                    universal_newlines=True,   # Return strings instead of bytes
+                    bufsize=1                 # Line buffered
                 )
-                stdout, stderr = process.communicate()
+                
+                # Process output in real-time to provide progress updates
+                last_progress = 0
+                for line in process.stdout:
+                    line = line.strip()
+                    
+                    # Log important progress information
+                    if "Progress" in line:
+                        # Extract progress percentage if available
+                        try:
+                            progress = int(line.split('%')[0].split()[-1])
+                            if progress >= last_progress + 10:  # Log every 10% progress
+                                self.log(logging.INFO, f"Demucs progress: {progress}%")
+                                last_progress = progress
+                        except:
+                            self.log(logging.DEBUG, line)
+                    elif "Separated" in line or "Saving" in line or "Done" in line:
+                        self.log(logging.INFO, line)
+                    else:
+                        self.log(logging.DEBUG, line)
+                
+                # Wait for process to complete
+                process.wait()
                 
                 if process.returncode != 0:
-                    self.log(logging.ERROR, f"Demucs failed: {stderr.decode()}")
+                    self.log(logging.ERROR, f"Demucs failed with return code {process.returncode}")
                     return False
+                
+                self.log(logging.INFO, "Demucs processing completed successfully")
                 
                 # Find the vocals file in the output directory
                 base_name = os.path.splitext(os.path.basename(input_file))[0]
@@ -400,8 +466,9 @@ class AudioPreprocessor:
                     return False
                 
                 # Copy the vocals file to the output location
+                self.log(logging.INFO, f"Copying vocals file to output location...")
                 shutil.copy(vocals_path, output_file)
-                self.log(logging.INFO, f"Vocals extracted to {output_file}")
+                self.log(logging.INFO, f"Vocals extracted and saved to {output_file}")
                 return True
                 
         except Exception as e:
