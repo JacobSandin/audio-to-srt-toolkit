@@ -3,7 +3,7 @@
 # Handles audio preprocessing, diarization, and SRT creation
 # 2025-04-23 -JS
 
-__version__ = "0.0.046"  # Version should match CHANGELOG.md
+__version__ = "0.0.047"  # Version should match CHANGELOG.md
 
 import os
 import sys
@@ -87,16 +87,30 @@ def setup_logging(args):
     timestamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
     log_file = os.path.join(logs_dir, f'audio-toolkit-{timestamp}.log')
     
-    # Set up logging level based on arguments
+    # Set up file logging level - always DEBUG with debug flags
     if args.debug or args.debug_files_only:
-        log_level = logging.DEBUG
+        file_log_level = logging.DEBUG
     elif args.quiet:
-        log_level = logging.WARNING
+        file_log_level = logging.WARNING
     else:
-        log_level = logging.INFO
+        file_log_level = logging.INFO
+    
+    # Set up console logging level - DEBUG only with --debug flag
+    if args.debug:
+        console_log_level = logging.DEBUG
+    elif args.quiet:
+        console_log_level = logging.WARNING
+    else:
+        console_log_level = logging.INFO
+    
+    # Create formatters for different outputs
+    file_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    console_formatter = logging.Formatter('%(message)s')  # Simple format for console
     
     # Create file handler with progress bar filter
     file_handler = logging.FileHandler(log_file)
+    file_handler.setLevel(file_log_level)
+    file_handler.setFormatter(file_formatter)
     file_handler.addFilter(ProgressBarFilter())  # Add filter to suppress progress bars
     
     # Create console handler
@@ -106,12 +120,13 @@ def setup_logging(args):
     else:
         # Normal console output
         console_handler = logging.StreamHandler()
+        console_handler.setLevel(console_log_level)
+        console_handler.setFormatter(console_formatter)
         console_handler.addFilter(ProgressBarFilter())  # Add filter to console output
     
-    # Configure logging
+    # Configure logging - use DEBUG level to allow all handlers to work
     logging.basicConfig(
-        level=log_level,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        level=logging.DEBUG,  # Base level is DEBUG to allow handlers to control their own levels
         handlers=[file_handler, console_handler]
     )
     
@@ -277,7 +292,7 @@ def parse_args():
     parser.add_argument(
         '--debug-files-only',
         action='store_true',
-        help='Create debug files in output_dir/debug/ without enabling full debug mode'
+        help='Create debug files in output_dir/debug/ while keeping console at INFO level'
     )
     
     parser.add_argument(

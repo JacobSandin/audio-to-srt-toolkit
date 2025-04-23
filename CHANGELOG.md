@@ -2,12 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.047] - 2025-04-23
+
+### Fixed
+- Improved console output format to remove timestamps and module information
+- Simplified console logging to only show the message content
+- Maintained detailed logging in log files with timestamps and module info
+
 ## [0.0.046] - 2025-04-23
 
 ### Fixed
-- Fixed `--debug-files-only` flag to only create debug files without affecting console output
+- Fixed `--debug-files-only` flag to create debug files while keeping console at INFO level
+- Implemented separate log levels for file and console handlers
 - Clarified help text for `--debug-files-only` flag
-- Restored normal terminal logging when using `--debug-files-only`
 - Ensured debug files are created in output_dir/debug/ with `--debug-files-only`
 
 ## [0.0.045] - 2025-04-23
