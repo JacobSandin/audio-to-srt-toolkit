@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.1.000] - 2025-04-23
+## [0.0.001] - 2025-04-23
 
 ### Added
 - Initial project setup with old_tests directory containing all scripts
@@ -18,13 +18,20 @@ All notable changes to this project will be documented in this file.
 - Created test-driven development structure with tests/ and src/ directories
 - Added audio preprocessing pipeline with demucs, normalization, filtering, and compression
 - Added debug mode with intermediate file output for each processing step
-- Added high-quality WAV conversion as first preprocessing step with configurable bit depth and sample rate
+
+## [0.0.000] - Former Unreleased
+
+### Added
+- High-quality WAV conversion as first preprocessing step
+- Configurable bit depth (16/24/32-bit) and sample rate (44.1/48/96kHz)
+- Speaker diarization feature optimized for Swedish dialects
+- Command-line arguments for diarization parameters (--diarize, --min-speakers, --max-speakers, --clustering-threshold)
 
 ### Changed
-- Organized all scripts in the old_tests directory
-- Improved error handling and logging
-- Reduced default volume gain from 6.0 dB to 3.0 dB for better audio quality
-- Updated command syntax to use "if test $status -eq 0" instead of "if [ $? -eq 0 ]"
+- Changed output format from MP3 to WAV to maintain high audio quality throughout the processing pipeline
+- Maintained WAV format for all processing steps to preserve audio quality for dialect analysis
+- Updated code to use newer APIs for torchaudio and matplotlib to reduce deprecation warnings
+- Added warning filters to suppress all dependency-related warnings for clean test output
 
 ## [0.0.000] - Former Unreleased
 

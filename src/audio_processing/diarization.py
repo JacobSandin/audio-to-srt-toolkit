@@ -1,0 +1,371 @@
+#!/usr/bin/env python3
+# Speaker diarization module optimized for Swedish dialect separation
+# Implements multi-stage approach with separate VAD and diarization
+# 2025-04-23 - JS
+
+import os
+import sys
+import time
+import logging
+import warnings
+import torch
+import numpy as np
+from pyannote.audio import Pipeline
+from pyannote.audio.pipelines.utils.hook import ProgressHook
+import datetime
+import matplotlib.pyplot as plt
+
+# Filter out specific warnings from torchaudio and other libraries
+warnings.filterwarnings("ignore", message="torchaudio._backend.*has been deprecated")
+warnings.filterwarnings("ignore", message="Module 'speechbrain.pretrained' was deprecated")
+warnings.filterwarnings("ignore", message="'audioop' is deprecated and slated for removal")
+
+# Use the new import path for AudioMetaData
+from torchaudio import AudioMetaData  # 2025-04-23 - JS
+
+# Helper function to get colormap using the new API
+def get_colormap(name):
+    """Get a colormap using the new matplotlib API to avoid deprecation warnings.
+    
+    Args:
+        name: Name of the colormap
+        
+    Returns:
+        The requested colormap
+    """
+    return plt.colormaps[name]  # 2025-04-23 - JS
+
+
+class SpeakerDiarizer:
+    """
+    Speaker diarization class that implements multi-stage approach
+    optimized for Swedish dialect separation.
+    """
+    
+    def __init__(self, config=None):
+        """
+        Initialize the speaker diarizer with configuration.
+        
+        Args:
+            config: Dictionary with configuration parameters
+        """
+        self.config = config or {}
+        
+        # Set up configuration parameters with defaults
+        self.min_speakers = self.config.get('min_speakers', 2)
+        self.max_speakers = self.config.get('max_speakers', 4)
+        self.clustering_threshold = self.config.get('clustering_threshold', 0.65)
+        self.use_gpu = self.config.get('use_gpu', torch.cuda.is_available())
+        self.huggingface_token = self.config.get('huggingface_token', os.environ.get('HF_TOKEN'))
+        self.batch_size = self.config.get('batch_size', 32)
+        self.debug = self.config.get('debug', False)
+        self.debug_dir = self.config.get('debug_dir', None)
+        
+        # Initialize pipelines
+        self.diarization_pipeline = None
+        self.vad_pipeline = None
+        self.segmentation_pipeline = None
+        
+        # Set up logger
+        self.logger = logging.getLogger(__name__)
+        
+        self.log(logging.INFO, "Speaker diarizer initialized")
+        self.log(logging.INFO, f"Configuration: min_speakers={self.min_speakers}, max_speakers={self.max_speakers}, "
+                             f"clustering_threshold={self.clustering_threshold}")
+    
+    def log(self, level, *messages, **kwargs):
+        """
+        Unified logging function.
+        
+        Args:
+            level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+            messages: Messages to log
+            kwargs: Additional logging parameters
+        """
+        if level == logging.DEBUG:
+            self.logger.debug(*messages, **kwargs)
+        elif level == logging.INFO:
+            self.logger.info(*messages, **kwargs)
+        elif level == logging.WARNING:
+            self.logger.warning(*messages, **kwargs)
+        elif level == logging.ERROR:
+            self.logger.error(*messages, **kwargs)
+        elif level == logging.CRITICAL:
+            self.logger.critical(*messages, **kwargs)
+    
+    def load_models(self):
+        """
+        Load diarization, VAD, and segmentation models.
+        
+        Returns:
+            bool: True if models were loaded successfully, False otherwise
+        """
+        try:
+            self.log(logging.INFO, "Loading diarization model...")
+            
+            # Load the latest diarization pipeline
+            self.diarization_pipeline = Pipeline.from_pretrained(
+                "pyannote/speaker-diarization-3.1",
+                use_auth_token=self.huggingface_token
+            )
+            
+            # Optimize GPU usage if available
+            if self.use_gpu and torch.cuda.is_available():
+                self.log(logging.INFO, "Moving diarization pipeline to GPU...")
+                self.diarization_pipeline.to(torch.device("cuda"))
+                
+                # Enable TF32 for faster processing
+                torch.backends.cuda.matmul.allow_tf32 = True
+                torch.backends.cudnn.allow_tf32 = True
+                
+                # Set benchmark mode for faster processing with fixed input sizes
+                torch.backends.cudnn.benchmark = True
+                
+                # Set batch size for better GPU utilization
+                if hasattr(self.diarization_pipeline, "batch_size"):
+                    self.diarization_pipeline.batch_size = self.batch_size
+                    self.log(logging.INFO, f"Set batch_size to {self.batch_size}")
+                
+                # Try to allocate more GPU memory
+                torch.cuda.empty_cache()
+                torch.cuda.memory.set_per_process_memory_fraction(0.95)  # Use up to 95% of GPU memory
+            
+            # Load VAD model
+            self.log(logging.INFO, "Loading Voice Activity Detection model...")
+            self.vad_pipeline = Pipeline.from_pretrained(
+                "pyannote/voice-activity-detection",
+                use_auth_token=self.huggingface_token
+            )
+            
+            # Move VAD to GPU if available
+            if self.use_gpu and torch.cuda.is_available():
+                self.vad_pipeline.to(torch.device("cuda"))
+            
+            # Try to load segmentation model
+            try:
+                self.log(logging.INFO, "Loading segmentation model...")
+                self.segmentation_pipeline = Pipeline.from_pretrained(
+                    "pyannote/segmentation-3.0",
+                    use_auth_token=self.huggingface_token
+                )
+                
+                # Move segmentation to GPU if available
+                if self.use_gpu and torch.cuda.is_available():
+                    self.segmentation_pipeline.to(torch.device("cuda"))
+                
+                self.log(logging.INFO, "Segmentation model loaded successfully")
+            except Exception as e:
+                self.log(logging.WARNING, f"Error loading segmentation model: {str(e)}")
+                self.log(logging.WARNING, "Continuing without segmentation model")
+                self.segmentation_pipeline = None
+            
+            self.log(logging.INFO, "Models loaded successfully")
+            return True
+            
+        except Exception as e:
+            self.log(logging.ERROR, f"Error loading models: {str(e)}")
+            return False
+    
+    def diarize(self, input_file, output_dir):
+        """
+        Perform speaker diarization on the input audio file.
+        
+        Args:
+            input_file: Path to input audio file
+            output_dir: Directory to save output files
+            
+        Returns:
+            bool: True if diarization was successful, False otherwise
+        """
+        try:
+            self.log(logging.INFO, f"Starting diarization of {input_file}")
+            start_time = time.time()
+            
+            # Create output directory if it doesn't exist
+            os.makedirs(output_dir, exist_ok=True)
+            
+            # Create debug directory if debug mode is enabled
+            if self.debug and self.debug_dir:
+                os.makedirs(self.debug_dir, exist_ok=True)
+            
+            # Load models if not already loaded
+            if not self.diarization_pipeline or not self.vad_pipeline:
+                if not self.load_models():
+                    self.log(logging.ERROR, "Failed to load models")
+                    return False
+            
+            # Generate base output filename
+            base_output = os.path.splitext(os.path.basename(input_file))[0]
+            
+            # First run Voice Activity Detection if available
+            speech_regions = None
+            if self.vad_pipeline:
+                self.log(logging.INFO, "Running Voice Activity Detection...")
+                vad_start_time = time.time()
+                
+                # Run VAD to get speech regions
+                vad_result = self.vad_pipeline(input_file)
+                
+                # Extract speech regions
+                speech_regions = []
+                for speech, _, _ in vad_result.itertracks(yield_label=True):
+                    speech_regions.append({
+                        "start": speech.start,
+                        "end": speech.end
+                    })
+                
+                vad_end_time = time.time()
+                self.log(logging.INFO, f"Detected {len(speech_regions)} speech regions in {vad_end_time - vad_start_time:.2f} seconds")
+                
+                # Save VAD results to file if debug mode is enabled
+                if self.debug and self.debug_dir:
+                    timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+                    vad_output_file = os.path.join(self.debug_dir, f"{base_output}.vad-{timestamp}.segments")
+                    with open(vad_output_file, "w") as f:
+                        for seg in speech_regions:
+                            line = f"Speech from {seg['start']:.2f}s to {seg['end']:.2f}s"
+                            f.write(line + "\n")
+                    self.log(logging.INFO, f"Voice activity detection results saved to {vad_output_file}")
+            
+            # Try different speaker counts
+            all_results = {}
+            successful_runs = []
+            best_speaker_count = None
+            max_segments = 0
+            
+            # Generate speaker counts to try
+            speaker_counts = list(range(self.min_speakers, self.max_speakers + 1))
+            
+            for num_speakers in speaker_counts:
+                try:
+                    self.log(logging.INFO, f"Trying with num_speakers={num_speakers}")
+                    start_time_run = time.time()
+                    
+                    # Run diarization with the current speaker count
+                    with ProgressHook() as hook:
+                        diarization = self.diarization_pipeline(
+                            input_file, 
+                            num_speakers=num_speakers, 
+                            hook=hook,
+                            clustering_threshold=self.clustering_threshold
+                        )
+                    
+                    # Process results for this run
+                    segments = []
+                    for turn, _, speaker in diarization.itertracks(yield_label=True):
+                        segments.append({
+                            "start": turn.start,
+                            "end": turn.end,
+                            "speaker": speaker
+                        })
+                    
+                    # Generate output filename for this speaker count
+                    run_output_file = os.path.join(output_dir, f"{base_output}.{num_speakers}speakers.segments")
+                    
+                    # Save segments to file
+                    with open(run_output_file, "w") as f:
+                        for seg in segments:
+                            line = f"Speaker {seg['speaker']} from {seg['start']:.2f}s to {seg['end']:.2f}s"
+                            f.write(line + "\n")
+                    
+                    # Calculate duration and stats
+                    end_time_run = time.time()
+                    duration_run = end_time_run - start_time_run
+                    
+                    # Store results
+                    all_results[f"{num_speakers}speakers"] = {
+                        "segments": segments,
+                        "output_file": run_output_file,
+                        "duration": duration_run,
+                        "segment_count": len(segments),
+                        "num_speakers": num_speakers
+                    }
+                    
+                    # Check if this is the best run so far
+                    if len(segments) > max_segments:
+                        max_segments = len(segments)
+                        best_speaker_count = num_speakers
+                    
+                    self.log(logging.INFO, f"Successfully completed diarization with {num_speakers} speakers")
+                    self.log(logging.INFO, f"Found {len(segments)} speaker segments in {duration_run:.2f} seconds")
+                    self.log(logging.INFO, f"Results saved to {run_output_file}")
+                    
+                    # Add to successful runs
+                    successful_runs.append(num_speakers)
+                    
+                except Exception as e:
+                    self.log(logging.ERROR, f"Error during diarization with {num_speakers} speakers: {str(e)}")
+            
+            # If no successful runs, try with auto speaker detection
+            if not successful_runs:
+                try:
+                    self.log(logging.INFO, "Trying with auto speaker detection")
+                    start_time_run = time.time()
+                    
+                    # Run diarization with auto speaker detection
+                    with ProgressHook() as hook:
+                        diarization = self.diarization_pipeline(
+                            input_file, 
+                            hook=hook,
+                            clustering_threshold=self.clustering_threshold
+                        )
+                    
+                    # Process results
+                    segments = []
+                    for turn, _, speaker in diarization.itertracks(yield_label=True):
+                        segments.append({
+                            "start": turn.start,
+                            "end": turn.end,
+                            "speaker": speaker
+                        })
+                    
+                    # Generate output filename
+                    run_output_file = os.path.join(output_dir, f"{base_output}.auto.segments")
+                    
+                    # Save segments to file
+                    with open(run_output_file, "w") as f:
+                        for seg in segments:
+                            line = f"Speaker {seg['speaker']} from {seg['start']:.2f}s to {seg['end']:.2f}s"
+                            f.write(line + "\n")
+                    
+                    # Calculate duration and stats
+                    end_time_run = time.time()
+                    duration_run = end_time_run - start_time_run
+                    
+                    self.log(logging.INFO, "Successfully completed diarization with auto speaker detection")
+                    self.log(logging.INFO, f"Found {len(segments)} speaker segments in {duration_run:.2f} seconds")
+                    self.log(logging.INFO, f"Results saved to {run_output_file}")
+                    
+                except Exception as e:
+                    self.log(logging.ERROR, f"Error during auto diarization: {str(e)}")
+            
+            # Print timing information
+            end_time = time.time()
+            total_duration = end_time - start_time
+            self.log(logging.INFO, f"Total diarization time: {total_duration:.2f} seconds")
+            
+            # Create a summary file
+            summary_file = os.path.join(output_dir, f"{base_output}.diarization_summary.txt")
+            with open(summary_file, "w") as f:
+                f.write(f"Diarization Summary for {input_file}\n")
+                f.write(f"Timestamp: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write(f"Total processing time: {total_duration:.2f} seconds\n\n")
+                
+                if best_speaker_count:
+                    f.write(f"Best speaker count: {best_speaker_count} (with {max_segments} segments)\n\n")
+                
+                f.write("Results by speaker count:\n")
+                for count in speaker_counts:
+                    if f"{count}speakers" in all_results:
+                        result = all_results[f"{count}speakers"]
+                        f.write(f"  {count} speakers: {result['segment_count']} segments in {result['duration']:.2f} seconds\n")
+                    else:
+                        f.write(f"  {count} speakers: Failed\n")
+            
+            self.log(logging.INFO, f"Diarization summary saved to {summary_file}")
+            
+            return True
+            
+        except Exception as e:
+            self.log(logging.ERROR, f"Error during diarization: {str(e)}")
+            return False

@@ -5,9 +5,21 @@
 
 import os
 import sys
-import argparse
 import logging
+import argparse
 import datetime
+import warnings
+import torch
+
+# Filter out warnings from dependencies
+warnings.filterwarnings("ignore", message="torchaudio._backend.*has been deprecated")
+warnings.filterwarnings("ignore", message="Module 'speechbrain.pretrained' was deprecated")
+warnings.filterwarnings("ignore", message="'audioop' is deprecated and slated for removal")
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="matplotlib")
+
+# Filter out specific remaining pyannote warnings
+warnings.filterwarnings("ignore", message="The get_cmap function was deprecated in Matplotlib 3.7")
+warnings.filterwarnings("ignore", message="`torchaudio.backend.common.AudioMetaData` has been moved to `torchaudio.AudioMetaData`")
 from pathlib import Path
 
 # Add the project directory to the Python path
@@ -108,6 +120,34 @@ def parse_args():
         help='Skip audio preprocessing steps'
     )
     
+    parser.add_argument(
+        '--diarize',
+        action='store_true',
+        help='Perform speaker diarization on the audio file'
+    )
+    
+    # Diarization parameters
+    parser.add_argument(
+        '--min-speakers',
+        type=int,
+        default=2,
+        help='Minimum number of speakers to consider (default: 2)'
+    )
+    
+    parser.add_argument(
+        '--max-speakers',
+        type=int,
+        default=4,
+        help='Maximum number of speakers to consider (default: 4)'
+    )
+    
+    parser.add_argument(
+        '--clustering-threshold',
+        type=float,
+        default=0.65,
+        help='Clustering threshold for speaker separation (default: 0.65)'
+    )
+    
     # WAV conversion parameters
     parser.add_argument(
         '--bit-depth',
@@ -195,7 +235,7 @@ def process_audio(args):
     
     # Generate output file name based on input file
     input_basename = os.path.basename(input_file)
-    output_basename = os.path.splitext(input_basename)[0] + "_processed.mp3"
+    output_basename = os.path.splitext(input_basename)[0] + "_processed.wav"
     output_file = os.path.join(output_dir, output_basename)
     
     # Create debug directory if debug mode is enabled
@@ -229,11 +269,45 @@ def process_audio(args):
     preprocessor = AudioPreprocessor(config)
     
     # Preprocess audio
+    preprocessing_result = True
     if args.skip_preprocessing:
         log(logging.INFO, "Skipping preprocessing as requested")
-        return True
     else:
-        return preprocessor.preprocess(input_file, output_file)
+        preprocessing_result = preprocessor.preprocess(input_file, output_file)
+        if not preprocessing_result:
+            log(logging.ERROR, "Preprocessing failed")
+            return False
+        input_file = output_file  # Use processed file for diarization
+    
+    # Perform speaker diarization if requested
+    if args.diarize:
+        log(logging.INFO, "Starting speaker diarization")
+        
+        # Configure diarizer
+        diarization_config = {
+            'debug': args.debug,
+            'debug_dir': debug_dir if args.debug else None,
+            'min_speakers': args.min_speakers,
+            'max_speakers': args.max_speakers,
+            'clustering_threshold': args.clustering_threshold,
+            'use_gpu': torch.cuda.is_available(),
+            'huggingface_token': os.environ.get('HF_TOKEN'),
+            'batch_size': 32
+        }
+        
+        # Import diarizer here to ensure the mock in tests works correctly
+        from src.audio_processing.diarization import SpeakerDiarizer
+        diarizer = SpeakerDiarizer(diarization_config)
+        
+        # Run diarization
+        diarization_result = diarizer.diarize(input_file, output_dir)
+        if not diarization_result:
+            log(logging.ERROR, "Diarization failed")
+            return False
+        
+        log(logging.INFO, "Speaker diarization completed successfully")
+    
+    return True
 
 
 def main():

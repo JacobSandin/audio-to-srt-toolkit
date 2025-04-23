@@ -68,16 +68,26 @@ The `audio_toolkit.py` script provides a unified command-line interface for all 
 # With audio processing options
 ./audio_toolkit.py --input-audio your_audio_file.mp3 --highpass 200 --lowpass 7000 --volume-gain 4
 
+# With speaker diarization optimized for Swedish dialects
+./audio_toolkit.py --input-audio your_audio_file.mp3 --diarize --min-speakers 2 --max-speakers 4 --clustering-threshold 0.65
+
 # With debug mode (saves intermediate files for each processing step)
 ./audio_toolkit.py --input-audio your_audio_file.mp3 --debug
+
+# Combined preprocessing and diarization with debug output
+./audio_toolkit.py --input-audio your_audio_file.mp3 --diarize --debug
 ```
 
 The toolkit performs the following preprocessing steps:
-1. Vocal separation using demucs
-2. Audio normalization
-3. High-pass filtering to emphasize dialect differences
-4. Compression to balance audio levels
-5. Volume adjustment to ensure voices are clearly audible
+
+1. Convert input audio to high-quality WAV format (24-bit, 48kHz)
+2. Separate vocals using Demucs
+3. Normalize audio levels
+4. Apply high-pass and low-pass filtering
+5. Apply dynamic range compression
+6. Adjust volume
+
+All processing maintains the high-quality WAV format throughout the pipeline to preserve audio quality for dialect analysis.
 
 ### Debug Mode
 

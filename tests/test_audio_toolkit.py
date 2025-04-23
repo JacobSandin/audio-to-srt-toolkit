@@ -104,6 +104,10 @@ class TestAudioToolkitCLI(unittest.TestCase):
             args.sample_rate = 48000
             args.quiet = False
             args.debug = False
+            args.diarize = False
+            args.min_speakers = 2
+            args.max_speakers = 4
+            args.clustering_threshold = 0.65
             
             # Import and call the process_audio function
             from audio_toolkit import process_audio
