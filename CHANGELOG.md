@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.042] - 2025-04-23
+
+### Added
+- Added comprehensive test suite for configuration loading functionality
+- Added tests for new model configuration structure
+- Added tests for progress bar handling in demucs
+- Updated .windsurfrules with enhanced TDD enforcement mechanisms
+
+### Changed
+- Improved configuration structure with dedicated sections for model types
+- Enhanced diarization.py to work with the new configuration structure
+- Maintained backward compatibility with old configuration format
+- Fixed failing tests to properly use skip_diarization flag
+
 ## [0.0.041] - 2025-04-23
 
 ### Added
