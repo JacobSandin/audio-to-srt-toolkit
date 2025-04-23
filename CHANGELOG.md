@@ -34,8 +34,11 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 - Changed output format from MP3 to WAV to maintain high audio quality throughout the processing pipeline
-- Maintained WAV format for all processing steps to preserve audio quality for dialect analysis
-- Updated debug file output to use WAV format instead of MP3 for consistency
+- Updated debug output files to use WAV format instead of MP3
+- Updated matplotlib API usage to avoid deprecation warnings
+- Updated torchaudio API usage to avoid deprecation warnings
+- Improved intermediate file handling: now using temporary files when not in debug mode
+- Moved large intermediate files (highquality.wav, vocals.wav) to debug directory with timestamps when in debug mode
 - Updated code to use newer APIs for torchaudio and matplotlib to reduce deprecation warnings
 - Added warning filters to suppress all dependency-related warnings for clean test output
 - Added pytest configuration file (conftest.py) to ensure consistent warning suppression across all tests

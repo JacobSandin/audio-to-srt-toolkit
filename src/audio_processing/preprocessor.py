@@ -137,27 +137,53 @@ class AudioPreprocessor:
         """
         self.log(logging.INFO, f"Starting preprocessing of {input_file}")
         
-        # Step 1: Convert to high-quality WAV
-        wav_file = os.path.splitext(output_file)[0] + "_highquality.wav"
-        if not self.convert_to_wav(input_file, wav_file, 
-                                  bit_depth=self.config.get('bit_depth', 24),
-                                  sample_rate=self.config.get('sample_rate', 48000)):
-            self.log(logging.ERROR, "WAV conversion failed")
-            return False
+        # Create timestamp for intermediate files
+        timestamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
+        base_name = os.path.splitext(os.path.basename(input_file))[0]
         
-        # Step 2: Separate vocals using demucs
-        vocals_file = os.path.splitext(output_file)[0] + "_vocals.wav"
-        if not self.separate_vocals(wav_file, vocals_file):
-            self.log(logging.ERROR, "Vocal separation failed")
-            return False
+        # Determine paths for intermediate files
+        if self.debug_mode and self.debug_dir:
+            # In debug mode, save intermediate files in debug directory with timestamps
+            wav_file = os.path.join(self.debug_dir, f"{base_name}.highquality.{timestamp}.wav")
+            vocals_file = os.path.join(self.debug_dir, f"{base_name}.vocals.{timestamp}.wav")
+        else:
+            # In normal mode, use temporary files that will be cleaned up
+            temp_dir = tempfile.mkdtemp(prefix="audio_toolkit_")
+            wav_file = os.path.join(temp_dir, "highquality.wav")
+            vocals_file = os.path.join(temp_dir, "vocals.wav")
         
-        # Step 3: Process the separated vocals
-        if not self.process_audio(vocals_file, output_file):
-            self.log(logging.ERROR, "Audio processing failed")
-            return False
-        
-        self.log(logging.INFO, f"Preprocessing completed successfully: {output_file}")
-        return True
+        try:
+            # Step 1: Convert to high-quality WAV
+            if not self.convert_to_wav(input_file, wav_file, 
+                                      bit_depth=self.config.get('bit_depth', 24),
+                                      sample_rate=self.config.get('sample_rate', 48000)):
+                self.log(logging.ERROR, "WAV conversion failed")
+                return False
+            
+            # Step 2: Separate vocals using demucs
+            if not self.separate_vocals(wav_file, vocals_file):
+                self.log(logging.ERROR, "Vocal separation failed")
+                return False
+            
+            # Step 3: Process the separated vocals
+            if not self.process_audio(vocals_file, output_file):
+                self.log(logging.ERROR, "Audio processing failed")
+                return False
+            
+            self.log(logging.INFO, f"Preprocessing completed successfully: {output_file}")
+            return True
+            
+        finally:
+            # Clean up temporary files if not in debug mode
+            if not self.debug_mode or not self.debug_dir:
+                try:
+                    # Remove temporary directory and its contents
+                    if os.path.exists(temp_dir):
+                        shutil.rmtree(temp_dir)
+                        self.log(logging.DEBUG, f"Cleaned up temporary files in {temp_dir}")
+                except Exception as e:
+                    self.log(logging.WARNING, f"Failed to clean up temporary files: {str(e)}")
+
     
     def separate_vocals(self, input_file, output_file):
         """
@@ -250,8 +276,8 @@ class AudioPreprocessor:
             audio = self.adjust_volume(audio, gain_db=self.default_gain)
             self._save_debug_file(audio, input_file, "volume")
             
-            # Export processed audio
-            audio.export(output_file, format="mp3", bitrate="192k")
+            # Export processed audio in WAV format for better quality
+            audio.export(output_file, format="wav")
             self.log(logging.INFO, f"Audio processing completed: {output_file}")
             return True
             
