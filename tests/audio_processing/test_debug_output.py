@@ -115,7 +115,9 @@ class TestDebugOutput(unittest.TestCase):
         args.lowpass = 8000
         args.compression_threshold = -10.0
         args.compression_ratio = 2.0
-        args.gain = 6.0
+        args.volume_gain = 6.0
+        args.bit_depth = 24
+        args.sample_rate = 48000
         args.quiet = False
         args.debug = True
         

@@ -108,6 +108,24 @@ def parse_args():
         help='Skip audio preprocessing steps'
     )
     
+    # WAV conversion parameters
+    parser.add_argument(
+        '--bit-depth',
+        type=int,
+        default=24,
+        choices=[16, 24, 32],
+        help='Bit depth for WAV conversion (default: 24)'
+    )
+    
+    parser.add_argument(
+        '--sample-rate',
+        type=int,
+        default=48000,
+        choices=[44100, 48000, 96000],
+        help='Sample rate in Hz for WAV conversion (default: 48000)'
+    )
+    
+    # Audio processing parameters
     parser.add_argument(
         '--highpass',
         type=int,
@@ -137,7 +155,7 @@ def parse_args():
     )
     
     parser.add_argument(
-        '--gain',
+        '--volume-gain',
         type=float,
         default=6.0,
         help='Volume gain in dB (default: 6.0)'
@@ -168,34 +186,43 @@ def process_audio(args):
     Returns:
         bool: True if processing was successful, False otherwise
     """
-    # Create output directory if it doesn't exist
-    os.makedirs(args.output_dir, exist_ok=True)
-    
-    # Get input and output file paths
+    # Get input file path
     input_file = os.path.abspath(args.input_audio)
-    base_name = os.path.splitext(os.path.basename(input_file))[0]
-    output_file = os.path.join(args.output_dir, f"{base_name}_processed.mp3")
     
-    log(logging.INFO, f"Processing audio file: {input_file}")
-    log(logging.INFO, f"Output will be saved to: {output_file}")
+    # Create output directory if it doesn't exist
+    output_dir = os.path.abspath(args.output_dir)
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Generate output file name based on input file
+    input_basename = os.path.basename(input_file)
+    output_basename = os.path.splitext(input_basename)[0] + "_processed.mp3"
+    output_file = os.path.join(output_dir, output_basename)
     
     # Create debug directory if debug mode is enabled
     debug_dir = None
     if args.debug:
-        debug_dir = os.path.join(args.output_dir, "debug")
+        debug_dir = os.path.join(output_dir, 'debug')
         os.makedirs(debug_dir, exist_ok=True)
-        log(logging.INFO, f"Debug mode enabled. Intermediate files will be saved to: {debug_dir}")
+        log(logging.INFO, f"Debug mode enabled, intermediate files will be saved to {debug_dir}")
     
-    # Create preprocessor with command-line arguments as configuration
+    # Configure audio preprocessor
     config = {
+        'debug': args.debug,
+        'debug_dir': debug_dir,
+        # WAV conversion parameters
+        'bit_depth': args.bit_depth,
+        'sample_rate': args.sample_rate,
+        # Audio processing parameters
         'highpass_cutoff': args.highpass,
         'lowpass_cutoff': args.lowpass,
         'compression_threshold': args.compression_threshold,
         'compression_ratio': args.compression_ratio,
-        'default_gain': args.gain,
-        'debug': args.debug,
-        'debug_dir': debug_dir
+        'volume_gain': args.volume_gain
     }
+    
+    log(logging.INFO, f"Processing audio file: {input_file}")
+    log(logging.INFO, f"Output will be saved to: {output_file}")
+    log(logging.INFO, f"Using {config['bit_depth']}-bit depth and {config['sample_rate']}Hz sample rate")
     
     # Import here to ensure the mock in tests works correctly
     from src.audio_processing.preprocessor import AudioPreprocessor

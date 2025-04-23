@@ -65,9 +65,68 @@ class AudioPreprocessor:
         elif level == logging.CRITICAL:
             self.logger.critical(*messages, **kwargs)
     
+    def convert_to_wav(self, input_file, output_file, bit_depth=24, sample_rate=48000):
+        """
+        Convert input audio to high-quality WAV format with specified bit depth and sample rate.
+        This is the first step in the preprocessing pipeline to ensure consistent quality.
+        
+        Args:
+            input_file: Path to input audio file
+            output_file: Path to output WAV file
+            bit_depth: Bit depth for the WAV file (16, 24, or 32)
+            sample_rate: Sample rate in Hz (e.g., 44100, 48000, 96000)
+            
+        Returns:
+            bool: True if conversion was successful, False otherwise
+        """
+        try:
+            self.log(logging.INFO, f"Converting {input_file} to {bit_depth}-bit {sample_rate}Hz WAV")
+            
+            # Load the input audio
+            audio = AudioSegment.from_file(input_file)
+            
+            # Ensure stereo (2 channels)
+            if audio.channels == 1:
+                audio = audio.set_channels(2)
+            
+            # Resample if necessary
+            if audio.frame_rate != sample_rate:
+                audio = audio.set_frame_rate(sample_rate)
+            
+            # Handle bit depth correctly
+            # For 24-bit audio, we need to use a special approach
+            if bit_depth == 24:
+                # Export with specific parameters for 24-bit
+                audio.export(
+                    output_file, 
+                    format="wav",
+                    parameters=["-acodec", "pcm_s24le", "-ac", "2", "-ar", str(sample_rate)]
+                )
+            else:
+                # For 16-bit and 32-bit, we can use the standard approach
+                sample_width = bit_depth // 8  # Convert bits to bytes
+                if audio.sample_width != sample_width:
+                    audio = audio.set_sample_width(sample_width)
+                audio.export(output_file, format="wav")
+            
+            # Verify the output file has the correct properties
+            converted_audio = AudioSegment.from_file(output_file)
+            self.log(logging.DEBUG, f"Converted audio properties: {converted_audio.channels} channels, "
+                                    f"{converted_audio.frame_rate}Hz, {converted_audio.sample_width * 8}-bit")
+            
+            # Save debug file if debug mode is enabled
+            self._save_debug_file(converted_audio, input_file, "wav_conversion")
+            
+            self.log(logging.INFO, f"Conversion completed: {output_file}")
+            return True
+            
+        except Exception as e:
+            self.log(logging.ERROR, f"Error converting to WAV: {str(e)}")
+            return False
+    
     def preprocess(self, input_file, output_file):
         """
-        Full preprocessing pipeline: separate vocals, normalize, filter, compress, adjust volume.
+        Full preprocessing pipeline: convert to WAV, separate vocals, normalize, filter, compress, adjust volume.
         
         Args:
             input_file: Path to input audio file
@@ -78,13 +137,21 @@ class AudioPreprocessor:
         """
         self.log(logging.INFO, f"Starting preprocessing of {input_file}")
         
-        # Step 1: Separate vocals using demucs
+        # Step 1: Convert to high-quality WAV
+        wav_file = os.path.splitext(output_file)[0] + "_highquality.wav"
+        if not self.convert_to_wav(input_file, wav_file, 
+                                  bit_depth=self.config.get('bit_depth', 24),
+                                  sample_rate=self.config.get('sample_rate', 48000)):
+            self.log(logging.ERROR, "WAV conversion failed")
+            return False
+        
+        # Step 2: Separate vocals using demucs
         vocals_file = os.path.splitext(output_file)[0] + "_vocals.wav"
-        if not self.separate_vocals(input_file, vocals_file):
+        if not self.separate_vocals(wav_file, vocals_file):
             self.log(logging.ERROR, "Vocal separation failed")
             return False
         
-        # Step 2: Process the separated vocals
+        # Step 3: Process the separated vocals
         if not self.process_audio(vocals_file, output_file):
             self.log(logging.ERROR, "Audio processing failed")
             return False

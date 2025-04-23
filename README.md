@@ -20,11 +20,13 @@ The project contains the following key components:
 
 ## Features
 
+- **High-Quality Audio Processing**: Convert to high-bit-depth WAV format for better dialect separation
 - **Speaker Diarization**: Separate audio by speaker using advanced models
 - **Voice Activity Detection**: Identify speech regions and filter out background noise
 - **Multi-stage Processing**: Combine specialized models for better results
 - **GPU Optimization**: Utilize GPU acceleration for faster processing
 - **Swedish Dialect Optimization**: Special parameters tuned for similar Swedish dialects
+- **Debug Mode**: Save intermediate files at each processing step for troubleshooting
 
 ## Requirements
 
@@ -60,8 +62,11 @@ The `audio_toolkit.py` script provides a unified command-line interface for all 
 # With custom output directory
 ./audio_toolkit.py --input-audio your_audio_file.mp3 --output-dir /path/to/output
 
+# With high-quality WAV conversion options (for better dialect separation)
+./audio_toolkit.py --input-audio your_audio_file.mp3 --bit-depth 24 --sample-rate 48000
+
 # With audio processing options
-./audio_toolkit.py --input-audio your_audio_file.mp3 --highpass 200 --lowpass 7000 --gain 8
+./audio_toolkit.py --input-audio your_audio_file.mp3 --highpass 200 --lowpass 7000 --volume-gain 8
 
 # With debug mode (saves intermediate files for each processing step)
 ./audio_toolkit.py --input-audio your_audio_file.mp3 --debug

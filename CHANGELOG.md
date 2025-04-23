@@ -18,6 +18,7 @@ All notable changes to this project will be documented in this file.
 - Created test-driven development structure with tests/ and src/ directories
 - Added audio preprocessing pipeline with demucs, normalization, filtering, and compression
 - Added debug mode with intermediate file output for each processing step
+- Added high-quality WAV conversion as first preprocessing step with configurable bit depth and sample rate
 
 ### Changed
 - Organized all scripts in the old_tests directory
