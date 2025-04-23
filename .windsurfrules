@@ -1,145 +1,184 @@
+# WINDSURFRULES VERSION: 1.0.0
+# LAST UPDATED: 2025-04-23 -JS
+# PURPOSE: Configuration file for AI assistants working on this project
+
+# ===============================
+# THIS PROJECT: SPECIFIC SETTINGS
+# ===============================
+
 # This project: Project Description
-- framework: python
-- build_command: pip install -r requirements.txt
+project:
+  name: audio-to-srt-toolkit
+  description: Audio processing toolkit optimized for Swedish dialect separation
+  framework: python
+  build_command: pip install -r requirements.txt
+  project_specific_files:
+    - src/audio_processing/__init__.py
 
 # This project: Audio Processing Configuration
-- huggingface_token: Use environment variable HF_TOKEN for authentication
-- models:
-  - pyannote/speaker-diarization-3.1
-  - tensorlake/speaker-diarization-3.1
-  - pyannote/segmentation-3.0
-  - pyannote/voice-activity-detection
-
-# This project: Audio Processing Rules
-- Use multi-stage approach with separate models for VAD and diarization
-- Try multiple speaker counts (2, 3, 4) to find optimal configuration
-- Use GPU acceleration when available
-- Set min_speakers=2 and max_speakers=4 for Swedish dialect separation
-- Set clustering_threshold=0.65 for better speaker separation
-- Save separate segment files for each configuration
-- Use TF32 acceleration on NVIDIA GPUs
-- Optimize batch size for available GPU memory
-- Filter out background noise using VAD before diarization
+audio_processing:
+  authentication:
+    huggingface_token: Use environment variable HF_TOKEN for authentication
+  models:
+    primary:
+      - tensorlake/speaker-diarization-3.1  # Preferred for Swedish dialects
+    fallback:
+      - pyannote/speaker-diarization-3.1
+    additional:
+      - pyannote/segmentation-3.0
+      - pyannote/voice-activity-detection
+  parameters:
+    min_speakers: 2
+    max_speakers: 4
+    clustering_threshold: 0.65
+  optimization:
+    use_gpu: true
+    tf32_acceleration: true
+    optimize_batch_size: true
 
 # This project: Swedish Dialect Processing
-- Use higher speaker counts (3-4) even for 2-speaker audio to better separate similar dialects
-- Apply high-pass filtering to emphasize dialect differences
-- Optimize for distinguishing between speakers with similar dialects
-- Use segmentation model to detect subtle speaker changes
+swedish_dialect_processing:
+  speaker_count_strategy: higher  # Use 3-4 speakers even for 2-speaker audio
+  filtering: high-pass  # Emphasize dialect differences
+  segmentation: detect_subtle_changes
+  processing_rules:
+    - use_multi_stage_approach
+    - try_multiple_speaker_counts
+    - save_separate_segment_files
+    - filter_background_noise_with_vad
+
+# ===============================
+# GLOBAL RULES: APPLY TO ALL PROJECTS
+# ===============================
+
+# Version Control Rules
+version_control:
+  version_format: semantic  # major.minor.patch
+  version_rules:
+    - increment_patch: for bug fixes and minor improvements
+    - increment_minor: for new features that don't break compatibility
+    - increment_major: for breaking changes
+    - update_all_files: [CHANGELOG.md, __init__.py]
+  git:
+    - commit_after_every_change
+    - ensure_tests_pass_before_commit
+    - clean_temporary_files
+    - remove_unneeded_files
+    - use_meaningful_commit_messages
+    - push_to_remote_repository
 
 # Architecture Rules
-- Uses a modular architecture with environment-specific implementations
-- Follows object-oriented design principles
-- Configuration-driven approach to avoid hardcoding
-- Implements a unified logging system
-- Provides command-line interface with standard arguments
-- Use modular design with clear separation of concerns
-- Core functionality should be environment-agnostic
-- Environment-specific code should extend base classes
-- Configuration should be externalized and environment-aware
-- Network operations should be isolated in utility modules
-- Database operations should use parameterized queries
-- Database operations should be isolated in utility modules
+architecture:
+  style: modular
+  principles:
+    - object_oriented_design
+    - configuration_driven
+    - separation_of_concerns
+    - environment_agnostic_core
+    - externalized_configuration
+    - isolated_network_operations
+    - parameterized_database_queries
 
-# Configuration Management
-- Use YAML for configuration files
-- Support environment-specific configuration files
-- Validate configurations before applying changes
-- Store sensitive information securely (not in code)
-- Support command-line overrides for configuration values
+# Development Workflow
+workflow:
+  approach: test-driven-development
+  rules:
+    - create_failing_tests_first
+    - never_modify_tests_to_pass_code
+    - code_must_pass_tests
+    - verify_all_tests_pass_before_commit
+  structure:
+    new_features: src/ directory with proper module structure
+    tests: tests/ directory matching src/ structure
+  implementation:
+    - present_plan_for_approval
+    - ask_about_directory_for_new_files
+    - wait_for_confirmation_before_implementation
+    - verify_understanding_before_implementation
 
-# On startup
-- Test if https://github.com/JacobSandin/configs/blob/master/windsurf/windsurfrules exists
-- If it does, compare to local .windsurfrules in project, except headers "This project:"
-- If it has changed, then ask user if they want to update .windsurfrules
-
-# AI Assistant Workflow
-- Always follow test-driven development (TDD) approach
-- Create failing tests first before implementing any feature
-- Never modify tests to pass code; code must pass tests
-- New features go in src/ directory with proper module structure
-- Tests go in tests/ directory matching the src/ structure
-- Never modify files in old_tests/ directory
-- Present implementation plan for approval before coding
-- Explicitly ask which directory to use for new files
-- Wait for confirmation before executing each implementation step
-- Verify understanding of these requirements before any implementation
-
-# Use of comments
-- Prepend functions with comments
-- Prepend classes with comments
-- Prepend modules with comments
-- Use comments to explain the logic of the code
-- Write timestamp together with "- JS" at end of _any_ comment when it is added or changed
-
-# Incorporate logging
-- log through one function log((self, level, *messages, **kwargs))
-- log INFO level to console unless --quiet or --debug is specified
-- Use logging framework
-- Each logfile should be with name-YYYYMMDD-HHMMSS.log
-- DEBUG: Detailed information, typically useful for debugging purposes.
-- INFO: General information about the execution of the application.
-- WARNING: An indication that something unexpected or potentially problematic has occurred, but the application can still continue running.
-- ERROR: An error has occurred that might prevent the application from continuing to execute.
-- CRITICAL: A critical error has occurred that will likely cause the application to terminate.
-
-# Communication in chat
-- Please write precise and short messages
-- Preferably show code rather than describing the code in text
+# Code Quality Standards
+code_quality:
+  comments:
+    - prepend_functions_with_comments
+    - prepend_classes_with_comments
+    - prepend_modules_with_comments
+    - explain_logic_with_comments
+    - timestamp_with_initials: "- JS"
+  logging:
+    function: log(self, level, *messages, **kwargs)
+    console_level: INFO unless --quiet or --debug specified
+    file_naming: name-YYYYMMDD-HHMMSS.log
+    levels:
+      - DEBUG: Detailed debugging information
+      - INFO: General execution information
+      - WARNING: Unexpected but non-fatal issues
+      - ERROR: Execution-preventing issues
+      - CRITICAL: Application-terminating issues
 
 # Testing Requirements
-- Use pytest for testing
-- unittest (Python's built-in testing framework)
-- unittest.mock (Python's built-in mocking library)
-- Follow test-driven development (TDD) practices
-- Create failing tests before implementing features
-- Do not create tests that require sudo to run, try to find a way around it.
-- Ensure all tests pass with run_tests.py before considering a feature complete
-- Use a data-driven approach for organization subnet discovery instead of hardcoding values
-- Static files are also considered hardcoded and should be considerd a last resort
-- Make sure you are not editing tests to pass unless they have an verified error.
-- The base code should pass the tests not the tests pass the base code.
-- Do not hardcode values
+testing:
+  frameworks:
+    - pytest
+    - unittest
+    - unittest.mock
+  practices:
+    - test_driven_development
+    - no_sudo_tests
+    - data_driven_approach
+    - avoid_hardcoded_values
+    - avoid_static_files
+    - never_edit_tests_to_pass
+    - code_passes_tests_not_tests_pass_code
 
-# Use of version control
-- Use git for version control
-- Try to commit after every change
-- Make sure all tests pass before committing
-- Clean out temporary files you created
-- Clean out files that are no longer needed
-- Use meaningful commit messages
-- Push changes to remote repository
+# Documentation Standards
+documentation:
+  files:
+    - README.md
+    - CHANGELOG.md
+  rules:
+    - update_before_code_commits
+    - document_all_new_features
+    - document_all_changes
+    - stage_documentation_before_code
+    - verify_documentation_before_commit
+  changelog:
+    - newest_versions_first
+    - format: [x.y.zzz] - YYYY-MM-DD
+    - increment_zzz_for_changes
+    - increment_xy_only_when_asked
+    - unreleased_at_bottom
 
-# Documentation
-- Always maintain README.md
-- Always update CHANGELOG.md
-- NEVER commit code changes without first updating documentation
-- Update README.md with any new features, scripts, or usage instructions
-- Update CHANGELOG.md with all changes made in the current commit
-- Documentation updates must be committed in the same commit as code changes
-- Run git add on documentation files before code files
-- Verify documentation changes before committing code changes
-- Both README.md and CHANGELOG.md should be updated before every commit
+# Communication Style
+communication:
+  style:
+    - precise_and_short_messages
+    - show_code_over_descriptions
+  command_line:
+    - clear_error_messages
+    - use_argparse
+    - support_quiet_and_debug_flags
+    - verify_command_output
 
-# Command Line Behavior
-- Provide clear error messages when invalid arguments are provided
-- Use argparse for command line arguments
-- Use --quiet and --debug parameters
+# Configuration Management
+configuration:
+  practices:
+    - use_yaml_for_config_files
+    - support_environment_specific_configs
+    - validate_before_applying
+    - store_sensitive_info_securely
+    - support_command_line_overrides
 
-# CHANGELOG Structure
-- Use version numbers in descending order (newest first)
-- Format versions as [x.y.zzz] with dates for released versions (Example: [0.1.000] - 2025-04-23)
-- Only increment zzz (last number) when making changes
-- x and y are incremented when user asks you too
-- Use [0.0.000] - Former Unreleased for features not yet in a release
-- Place unreleased changes at the bottom of the file
-
-# Before committing
-- README.md is up to date with latest features and changes
-- CHANGELOG.md is up to date with latest changes and correct version number
-- All tests pass with run_tests.py
-- No temporary files are left in the repository
-- Documentation changes are staged before code changes
-- Documentation accurately reflects the latest code changes
-- No sensitive information is included in the commit
-- make sure you get output with commands, adding echo "Command failed" or echo "Command succeeded" after commands if needed
+# Startup Behavior
+startup:
+  description: "Rules for checking and updating global configuration on project startup"
+  process:
+    1: "Check if remote rules file exists at https://raw.githubusercontent.com/JacobSandin/configs/refs/heads/master/windsurf/windsurfrules_v2"
+    2: "If remote file exists, download it and compare with local .windsurfrules file"
+    3: "When comparing, ignore all sections that start with '# This project:'"
+    4: "If any global sections (non-project-specific) have changed in the remote file"
+    5: "Prompt user: 'Global windsurf rules have been updated. Would you like to update your local .windsurfrules file? (Only global sections will be updated, project-specific sections will be preserved)'"
+    6: "If user confirms, merge the global sections from remote file with project-specific sections from local file"
+  implementation_notes:
+    - "Project-specific sections are identified by headers starting with '# This project:'"
+    - "All other sections are considered global and should be synchronized across projects"
+    - "The merge should preserve all project-specific content while updating global rules"
