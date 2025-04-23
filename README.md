@@ -73,6 +73,16 @@ pip install -r requirements.txt
 export HF_TOKEN=your_huggingface_token
 ```
 
+## Troubleshooting
+
+If you encounter issues with FFmpeg dependencies, diarization, or performance, please refer to the [FAQ.md](FAQ.md) file for detailed solutions to common problems.
+
+The FAQ covers:
+- FFmpeg library dependency issues and solutions
+- Diarization troubleshooting
+- Optimal filter settings for Swedish dialects
+- Performance optimization tips
+
 ## Usage
 
 ### Audio Toolkit Command
