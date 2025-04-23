@@ -138,20 +138,30 @@ class AudioPreprocessor:
         """
         self.log(logging.INFO, f"Starting preprocessing of {input_file}")
         
-        # Create timestamp for intermediate files
-        timestamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
+        # Get base name of input file without extension
         base_name = os.path.splitext(os.path.basename(input_file))[0]
+        
+        # Check if the input_file already contains a timestamp
+        import re
+        timestamp_pattern = re.compile(r'\d{8}_\d{6}')
+        
+        # If no timestamp in the base_name, add one at the beginning
+        if not timestamp_pattern.search(base_name):
+            timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+            timestamped_name = f"{timestamp}_{base_name}"
+        else:
+            timestamped_name = base_name
         
         # Determine paths for intermediate files
         if self.debug_mode and self.debug_dir:
-            # In debug mode, save intermediate files in debug directory with timestamps
-            wav_file = os.path.join(self.debug_dir, f"{base_name}.highquality.{timestamp}.wav")
-            vocals_file = os.path.join(self.debug_dir, f"{base_name}.vocals.{timestamp}.wav")
+            # In debug mode, save intermediate files in debug directory with consistent naming
+            wav_file = os.path.join(self.debug_dir, f"{timestamped_name}_highquality.wav")
+            vocals_file = os.path.join(self.debug_dir, f"{timestamped_name}_vocals.wav")
         else:
             # In normal mode, use temporary files that will be cleaned up
             temp_dir = tempfile.mkdtemp(prefix="audio_toolkit_")
-            wav_file = os.path.join(temp_dir, "highquality.wav")
-            vocals_file = os.path.join(temp_dir, "vocals.wav")
+            wav_file = os.path.join(temp_dir, f"{timestamped_name}_highquality.wav")
+            vocals_file = os.path.join(temp_dir, f"{timestamped_name}_vocals.wav")
         
         try:
             # Step 1: Convert to high-quality WAV
@@ -243,11 +253,17 @@ class AudioPreprocessor:
             # Get base name of input file without extension
             base_name = os.path.splitext(os.path.basename(input_file))[0]
             
-            # Create timestamp
-            timestamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
+            # Check if the input_file already contains a timestamp
+            import re
+            timestamp_pattern = re.compile(r'\d{8}_\d{6}')
             
-            # Create debug filename
-            debug_filename = f"{base_name}.{step_name}.{timestamp}.wav"
+            # If no timestamp in the base_name, add one at the beginning
+            if not timestamp_pattern.search(base_name):
+                timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+                base_name = f"{timestamp}_{base_name}"
+            
+            # Create debug filename with step name but no additional timestamp
+            debug_filename = f"{base_name}_{step_name}.wav"
             debug_path = os.path.join(self.debug_dir, debug_filename)
             
             # Export debug file in WAV format for better quality
@@ -268,6 +284,25 @@ class AudioPreprocessor:
         Returns:
             bool: True if processing was successful, False otherwise
         """
+        # Check if the input_file already contains a timestamp
+        import re
+        timestamp_pattern = re.compile(r'\d{8}_\d{6}')
+        
+        # Get base name of input file without extension
+        base_name = os.path.splitext(os.path.basename(input_file))[0]
+        
+        # If no timestamp in the base_name, add one at the beginning for output_file
+        if not timestamp_pattern.search(base_name) and not timestamp_pattern.search(os.path.basename(output_file)):
+            timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+            # Update output_file with timestamped name if it doesn't already have a timestamp
+            output_dir = os.path.dirname(output_file)
+            output_filename = os.path.basename(output_file)
+            output_base = os.path.splitext(output_filename)[0]
+            output_ext = os.path.splitext(output_filename)[1]
+            if not timestamp_pattern.search(output_base):
+                output_file = os.path.join(output_dir, f"{timestamp}_{output_base}{output_ext}")
+                self.log(logging.DEBUG, f"Updated output file path with timestamp: {output_file}")
+        
         try:
             self.log(logging.INFO, f"Processing audio: {input_file}")
             

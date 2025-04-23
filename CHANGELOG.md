@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.018] - 2025-04-23
+
+### Changed
+- Improved file naming convention with consistent patterns and single timestamps
+- Created test_highpass_cutoffs.py script for comparing different filter settings
+- Fixed multiple timestamp issue in debug and output files
+- Organized output files with timestamped directories for better comparison
+
 ## [0.0.017] - 2025-04-23
 
 ### Changed
