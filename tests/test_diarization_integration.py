@@ -78,6 +78,7 @@ class TestDiarizationIntegration(unittest.TestCase):
         args.sample_rate = 48000
         args.quiet = False
         args.debug = True
+        args.debug_files_only = False
         args.speaker_format = "{speaker}:"
         args.max_gap = 1.0
         args.max_duration = 10.0
@@ -133,6 +134,7 @@ class TestDiarizationIntegration(unittest.TestCase):
         args.sample_rate = 48000
         args.quiet = False
         args.debug = False
+        args.debug_files_only = False
         args.generate_srt = False
         args.include_timestamps = False
         args.speaker_format = "{speaker}:"
@@ -190,6 +192,7 @@ class TestDiarizationIntegration(unittest.TestCase):
         args.sample_rate = 48000
         args.quiet = False
         args.debug = False
+        args.debug_files_only = False
         args.generate_srt = False
         args.include_timestamps = False
         args.speaker_format = "{speaker}:"

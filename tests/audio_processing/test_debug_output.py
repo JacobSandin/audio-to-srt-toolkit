@@ -122,6 +122,7 @@ class TestDebugOutput(unittest.TestCase):
         args.sample_rate = 48000
         args.quiet = False
         args.debug = True
+        args.debug_files_only = False
         args.min_speakers = 2
         args.max_speakers = 4
         args.clustering_threshold = 0.65

@@ -95,6 +95,7 @@ class TestSRTIntegration(unittest.TestCase):
         args.sample_rate = 48000
         args.quiet = False
         args.debug = True
+        args.debug_files_only = False
         
         # Call the process_audio function
         result = process_audio(args)
@@ -168,6 +169,7 @@ class TestSRTIntegration(unittest.TestCase):
         args.sample_rate = 48000
         args.quiet = False
         args.debug = False
+        args.debug_files_only = False
         
         # Call the process_audio function
         result = process_audio(args)

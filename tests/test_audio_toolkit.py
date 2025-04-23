@@ -106,6 +106,7 @@ class TestAudioToolkitCLI(unittest.TestCase):
             args.sample_rate = 48000
             args.quiet = False
             args.debug = False
+            args.debug_files_only = False
             args.diarize = False
             args.min_speakers = 2
             args.max_speakers = 4
@@ -128,6 +129,7 @@ class TestAudioToolkitCLI(unittest.TestCase):
             
         args = Args()
         args.debug = True
+        args.debug_files_only = False
         args.quiet = False
         args.debug_files_only = False
         
