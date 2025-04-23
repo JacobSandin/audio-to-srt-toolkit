@@ -644,11 +644,17 @@ class AudioPreprocessor:
         
         result = np.array([], dtype=samples.dtype)
         
+        # Report 0% at start
+        self.log(logging.INFO, "Compression progress: 0%")
+        
         # Process each chunk with progress reporting
         for i in range(0, len(samples), chunk_size):
             # Calculate progress percentage
             progress = min(100, int((i / len(samples)) * 100))
-            if progress % 10 == 0:  # Report at 0%, 10%, 20%, etc.
+            
+            # Report at every 10% increment (10%, 20%, 30%, etc.)
+            # Skip 0% (already reported) and 100% (will report at end)
+            if progress % 10 == 0 and progress > 0 and progress < 100:
                 self.log(logging.INFO, f"Compression progress: {progress}%")
             
             # Get the current chunk
