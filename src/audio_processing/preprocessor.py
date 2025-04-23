@@ -430,21 +430,42 @@ class AudioPreprocessor:
                 
                 # Process output in real-time to provide progress updates
                 last_progress = 0
+                progress_line = ""
+                
                 for line in process.stdout:
                     line = line.strip()
                     
-                    # Log important progress information
+                    # Handle progress information more cleanly
                     if "Progress" in line:
                         # Extract progress percentage if available
                         try:
                             progress = int(line.split('%')[0].split()[-1])
-                            if progress >= last_progress + 10:  # Log every 10% progress
+                            
+                            # Only log at significant milestones (0%, 25%, 50%, 75%, 100%)
+                            if progress in [0, 25, 50, 75, 100] and progress > last_progress:
                                 self.log(logging.INFO, f"Demucs progress: {progress}%")
                                 last_progress = progress
+                            
+                            # For DEBUG level, don't log every progress line to avoid clutter
+                            # Just update the progress_line variable
+                            progress_line = f"Demucs processing: {progress}%"
                         except:
-                            self.log(logging.DEBUG, line)
-                    elif "Separated" in line or "Saving" in line or "Done" in line:
+                            # If we can't parse the progress, just log the line at DEBUG level
+                            self.log(logging.DEBUG, f"Demucs output: {line}")
+                    
+                    # Log important status messages at INFO level
+                    elif any(keyword in line for keyword in ["Separated", "Saving", "Done", "Model", "Using", "Loading"]):
                         self.log(logging.INFO, line)
+                    
+                    # Log errors at WARNING level
+                    elif any(keyword in line.lower() for keyword in ["error", "warning", "fail", "exception"]):
+                        self.log(logging.WARNING, line)
+                    
+                    # Skip logging other progress-related output to reduce clutter
+                    elif any(keyword in line for keyword in ["|█", "Processing", "Batch", "seconds/s"]):
+                        continue
+                    
+                    # Log everything else at DEBUG level
                     else:
                         self.log(logging.DEBUG, line)
                 

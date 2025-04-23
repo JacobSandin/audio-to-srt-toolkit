@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.016] - 2025-04-23
+
+### Changed
+- Improved progress reporting in Demucs vocal separation to reduce log clutter
+- Enhanced logging with cleaner milestone reporting (0%, 25%, 50%, 75%, 100%)
+- Added better categorization of log messages by importance level
+- Improved error and warning detection in process output
+
 ## [0.0.015] - 2025-04-23
 
 ### Changed
@@ -112,3 +120,5 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Initial commit
 - Set up Swedish dialect audio processing toolkit with scripts for diarization and transcription
+
+
