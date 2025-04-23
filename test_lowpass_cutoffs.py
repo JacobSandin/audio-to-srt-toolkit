@@ -4,6 +4,7 @@
 #
 # Usage: ./test_lowpass_cutoffs.py --input your_audio_file.mp3 --include-original --debug
 #        ./test_lowpass_cutoffs.py --input your_audio_file.mp3 --cutoffs 6000 7000 8000 9000
+#        ./test_lowpass_cutoffs.py --input your_audio_file.mp3 --highpass-level 4000 --cutoffs 6000 7000 8000
 
 import os
 import sys
@@ -53,7 +54,7 @@ def parse_args():
         '--cutoffs',
         type=int,
         nargs='+',
-        default=[5000, 6000, 7000, 8000, 9000, 10000, 12000, 15000],
+        default=[4000, 5000, 6000, 7000, 8000, 9000, 10000, 12000, 15000],
         help='List of lowpass cutoff frequencies to test (default: 5000-15000Hz range)'
     )
     
@@ -67,6 +68,13 @@ def parse_args():
         '--include-original',
         action='store_true',
         help='Include a copy of the original audio file for comparison'
+    )
+    
+    parser.add_argument(
+        '--highpass-level',
+        type=int,
+        default=3750,
+        help='Highpass filter cutoff frequency to use before testing lowpass (default: 3750Hz)'
     )
     
     return parser.parse_args()
@@ -126,15 +134,15 @@ def main():
     for cutoff in args.cutoffs:
         logger.info(f"Processing with lowpass cutoff: {cutoff}Hz")
         
-        # Create output file path for this cutoff
-        output_file = os.path.join(test_run_dir, f"{input_basename}_lowpass_{cutoff}hz.wav")
+        # Create output file path for this cutoff (include both highpass and lowpass levels)
+        output_file = os.path.join(test_run_dir, f"{input_basename}_hp{args.highpass_level}_lp{cutoff}.wav")
         
-        # Create preprocessor with specific lowpass cutoff
+        # Create preprocessor with specific lowpass cutoff and user-specified highpass level
         config = {
             'debug': args.debug,
             'debug_dir': debug_dir,
             'lowpass_cutoff': cutoff,
-            'highpass_cutoff': 3750  # Use our optimized highpass cutoff
+            'highpass_cutoff': args.highpass_level
         }
         preprocessor = AudioPreprocessor(config)
         
@@ -147,9 +155,9 @@ def main():
             sample_rate = audio.frame_rate
             logger.info(f"Audio loaded: {len(audio)/1000:.2f} seconds, {sample_rate}Hz sample rate")
             
-            # First apply the optimized highpass filter
-            logger.info(f"Applying high-pass filter (cutoff: 3750Hz)...")
-            highpass_audio = preprocessor.apply_highpass(audio, cutoff=3750, sample_rate=sample_rate)
+            # First apply the highpass filter with user-specified level
+            logger.info(f"Applying high-pass filter (cutoff: {args.highpass_level}Hz)...")
+            highpass_audio = preprocessor.apply_highpass(audio, cutoff=args.highpass_level, sample_rate=sample_rate)
             
             # Then apply lowpass filter with the test cutoff
             logger.info(f"Applying low-pass filter (cutoff: {cutoff}Hz)...")
@@ -162,7 +170,7 @@ def main():
             
             # Save debug file if debug mode is enabled
             if args.debug and debug_dir:
-                debug_file = os.path.join(debug_dir, f"{input_basename}_lowpass_{cutoff}hz_debug.wav")
+                debug_file = os.path.join(debug_dir, f"{input_basename}_hp{args.highpass_level}_lp{cutoff}_debug.wav")
                 filtered_audio.export(debug_file, format="wav")
                 logger.info(f"Debug file saved: {debug_file}")
         
@@ -174,7 +182,7 @@ def main():
     logger.info("=" * 60)
     logger.info(f"Processing complete! All test files are in: {test_run_dir}")
     logger.info(f"Tested lowpass cutoffs: {args.cutoffs}")
-    logger.info(f"Used optimized highpass cutoff: 3750Hz")
+    logger.info(f"Used highpass cutoff: {args.highpass_level}Hz")
     logger.info(f"Input file: {args.input}")
     logger.info(f"To compare results, listen to the output files in: {test_run_dir}")
     logger.info("=" * 60)
