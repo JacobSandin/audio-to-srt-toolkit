@@ -19,7 +19,7 @@ print(f"Output will be saved to: {output_file}")
 # Load the latest diarization pipeline (3.1 version)
 pipeline = Pipeline.from_pretrained(
     "tensorlake/speaker-diarization-3.1",
-    use_auth_token="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"
+    use_auth_token="[TOKEN]"
 )
 
 # Optimize GPU usage

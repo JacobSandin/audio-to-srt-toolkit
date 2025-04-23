@@ -98,7 +98,7 @@ try:
     print(f"Loading VAD model: {vad_models[0]}")
     vad_pipeline = Pipeline.from_pretrained(
         vad_models[0],
-        use_auth_token="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"
+        use_auth_token="[TOKEN]"
     )
     if torch.cuda.is_available():
         vad_pipeline.to(torch.device("cuda"))
@@ -118,7 +118,7 @@ try:
     from pyannote.audio import Model
     segmentation_model = Model.from_pretrained(
         segmentation_models[0],
-        use_auth_token="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"
+        use_auth_token="[TOKEN]"
     )
     
     if torch.cuda.is_available():
@@ -151,7 +151,7 @@ for model_name in diarization_models:
         print(f"Loading diarization model: {model_name}")
         diarization_pipeline = Pipeline.from_pretrained(
             model_name,
-            use_auth_token="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"
+            use_auth_token="[TOKEN]"
         )
         if torch.cuda.is_available():
             diarization_pipeline.to(torch.device("cuda"))

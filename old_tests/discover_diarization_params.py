@@ -12,7 +12,7 @@ def discover_pipeline_parameters():
         # Load the pipeline
         pipeline = Pipeline.from_pretrained(
             "pyannote/speaker-diarization@2.1",
-            use_auth_token="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"
+            use_auth_token="[TOKEN]"
         )
         
         # Get the pipeline class

@@ -10,7 +10,7 @@ print("========================")
 print("Loading pipeline...")
 pipeline = Pipeline.from_pretrained(
     "pyannote/speaker-diarization@2.1",
-    use_auth_token="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"
+    use_auth_token="[TOKEN]"
 )
 
 # Print pipeline class and version info
