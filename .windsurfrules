@@ -53,6 +53,18 @@
 - If it does, compare to local .windsurfrules in project, except headers "This project:"
 - If it has changed, then ask user if they want to update .windsurfrules
 
+# AI Assistant Workflow
+- Always follow test-driven development (TDD) approach
+- Create failing tests first before implementing any feature
+- Never modify tests to pass code; code must pass tests
+- New features go in src/ directory with proper module structure
+- Tests go in tests/ directory matching the src/ structure
+- Never modify files in old_tests/ directory
+- Present implementation plan for approval before coding
+- Explicitly ask which directory to use for new files
+- Wait for confirmation before executing each implementation step
+- Verify understanding of these requirements before any implementation
+
 # Use of comments
 - Prepend functions with comments
 - Prepend classes with comments
@@ -130,4 +142,5 @@
 - Commit message is meaningful and descriptive
 
 # Test commands you run
+- make sure you get output with commands, adding echo "Command failed" or echo "Command succeeded" after commands if needed
 - using "if test $status -eq 0" instead of "if [ $? -eq 0 ]"
