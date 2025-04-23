@@ -251,6 +251,7 @@ class AudioPreprocessor:
     def _save_debug_file(self, audio, input_file, step_name):
         """
         Save a debug file for a processing step if debug mode is enabled.
+        Uses a consistent naming pattern based on the original input filename.
         
         Args:
             audio: AudioSegment to save
@@ -264,20 +265,31 @@ class AudioPreprocessor:
             return
             
         try:
-            # Get base name of input file without extension
+            # Get base name of input file without extension and without any timestamp
             base_name = os.path.splitext(os.path.basename(input_file))[0]
             
-            # Check if the input_file already contains a timestamp
+            # Remove any existing timestamp pattern from the base_name
             import re
-            timestamp_pattern = re.compile(r'\d{8}_\d{6}')
+            timestamp_pattern = re.compile(r'\d{8}_\d{6}_')
+            base_name = re.sub(timestamp_pattern, '', base_name)
             
-            # If no timestamp in the base_name, add one at the beginning
-            if not timestamp_pattern.search(base_name):
-                timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-                base_name = f"{timestamp}_{base_name}"
+            # Create debug filename with step name and processing order prefix
+            # Use a fixed order prefix to ensure files sort correctly
+            step_order = {
+                "wav_conversion": "01",
+                "vocals": "02",
+                "highpass": "03",
+                "lowpass": "04",
+                "compression": "05",
+                "normalize": "06",
+                "volume": "07"
+            }
             
-            # Create debug filename with step name but no additional timestamp
-            debug_filename = f"{base_name}_{step_name}.wav"
+            # Get the order prefix or use "99" if step_name is not in the dictionary
+            order_prefix = step_order.get(step_name, "99")
+            
+            # Create debug filename with order prefix
+            debug_filename = f"{order_prefix}_{step_name}_{base_name}.wav"
             debug_path = os.path.join(self.debug_dir, debug_filename)
             
             # Export debug file in WAV format for better quality
@@ -486,7 +498,16 @@ class AudioPreprocessor:
                 # Look for progress indicators in the output
                 for line in process.stdout:
                     line = line.strip()
-                    self.log(logging.DEBUG, line)  # Log all output at DEBUG level for troubleshooting
+                    
+                    # Handle progress bars differently from other output
+                    if "|" in line and "%" in line and ("█" in line or "▉" in line or "▊" in line or "▋" in line or "▌" in line or "▍" in line or "▎" in line):
+                        # Print progress bars directly to console with cyan color
+                        print(f"\033[96m{line}\033[0m")
+                    else:
+                        # For non-progress output, print in normal color and log at DEBUG level
+                        if line.strip():
+                            print(line)
+                            self.log(logging.DEBUG, line)
                     
                     # Check if this is a bag of models and update the count
                     if "bag of" in line and "models" in line:
@@ -526,7 +547,8 @@ class AudioPreprocessor:
                                         break
                                 
                                 if milestone_reached:
-                                    self.log(logging.INFO, f"Demucs progress: {overall_progress}%")
+                                    # Only print milestone progress updates, not every percentage
+                                    print(f"\033[96mDemucs progress: {overall_progress}%\033[0m")
                                     last_progress = overall_progress
                         except Exception as e:
                             # If we can't parse the progress, just continue
@@ -539,7 +561,7 @@ class AudioPreprocessor:
                             
                             # Only log at significant milestones (0%, 25%, 50%, 75%, 100%)
                             if progress in [0, 25, 50, 75, 100] and progress > last_progress:
-                                self.log(logging.INFO, f"Demucs progress: {progress}%")
+                                print(f"\033[96mDemucs progress: {progress}%\033[0m")
                                 last_progress = progress
                         except:
                             pass
@@ -652,24 +674,33 @@ class AudioPreprocessor:
         samples = np.array(audio.get_array_of_samples())
         
         # Process in chunks to allow progress reporting
-        chunk_size = len(samples) // 10  # Process in 10 chunks for 10% progress updates
-        if chunk_size == 0:
-            chunk_size = len(samples)
+        total_samples = len(samples)
+        progress_points = []
+        
+        # Calculate exact sample positions for each 10% increment
+        for percentage in range(0, 101, 10):
+            progress_points.append((percentage, int(total_samples * percentage / 100)))
+        
+        # Create a smaller chunk size to ensure we hit all progress points
+        chunk_size = max(1, total_samples // 100)  # Use at least 100 chunks for smoother progress
         
         result = np.array([], dtype=samples.dtype)
+        last_reported_percentage = -1
         
         # Report 0% at start
-        self.log(logging.INFO, "Compression progress: 0%")
+        print("\033[96mCompression progress: 0%\033[0m")
         
         # Process each chunk with progress reporting
-        for i in range(0, len(samples), chunk_size):
-            # Calculate progress percentage
-            progress = min(100, int((i / len(samples)) * 100))
+        for i in range(0, total_samples, chunk_size):
+            # Calculate current progress percentage
+            current_position = i
+            current_percentage = int((current_position / total_samples) * 100)
             
             # Report at every 10% increment (10%, 20%, 30%, etc.)
             # Skip 0% (already reported) and 100% (will report at end)
-            if progress % 10 == 0 and progress > 0 and progress < 100:
-                self.log(logging.INFO, f"Compression progress: {progress}%")
+            if current_percentage % 10 == 0 and current_percentage > last_reported_percentage and current_percentage > 0 and current_percentage < 100:
+                print(f"\033[96mCompression progress: {current_percentage}%\033[0m")
+                last_reported_percentage = current_percentage
             
             # Get the current chunk
             chunk = samples[i:i+chunk_size]
@@ -701,7 +732,7 @@ class AudioPreprocessor:
             result = np.append(result, compressed)
         
         # Report 100% completion
-        self.log(logging.INFO, "Compression progress: 100%")
+        print("\033[96mCompression progress: 100%\033[0m")
         
         # Convert back to AudioSegment
         from pydub import AudioSegment

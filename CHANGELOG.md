@@ -2,6 +2,51 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.031] - 2025-04-23
+
+### Fixed
+- Improved compression progress reporting to show all 10% increments (10%, 20%, 30%, etc.)
+- Redesigned chunk processing to ensure consistent progress updates
+- Used smaller chunk size for more frequent and accurate progress reporting
+- Added progress tracking to prevent duplicate progress messages
+- Ensured all progress information is printed directly to console with color formatting
+
+## [0.0.030] - 2025-04-23
+
+### Added
+- Enhanced version_info.txt with comprehensive input audio file details
+- Added system information section with Python version and OS details
+- Included detailed audio file metadata (duration, channels, sample rate, etc.)
+- Added processing flags section to document enabled/disabled features
+- Fixed progress bar formatting in log files by filtering out TQDM output
+
+## [0.0.029] - 2025-04-23
+
+### Added
+- Added version_info.txt file to each output directory
+- Included toolkit version, processing date, and command used
+- Added detailed processing parameters (bit depth, sample rate, filter settings, etc.)
+- Improved traceability by documenting the exact configuration used for each run
+- Enhanced reproducibility by recording all processing parameters
+
+## [0.0.028] - 2025-04-23
+
+### Fixed
+- Fixed progress bar formatting by printing directly to console instead of through logging
+- Improved visibility of progress updates with colored output
+- Ensured compression and Demucs progress bars display correctly
+- Maintained debug-level logging for progress information while showing clean output to users
+- Separated console output from log file content for better readability
+
+## [0.0.027] - 2025-04-23
+
+### Fixed
+- Improved debug file naming with ordered prefixes (01_highpass, 02_lowpass, etc.)
+- Fixed issue where debug files could have inconsistent timestamps
+- Ensured debug files appear in correct processing order when sorted alphabetically
+- Removed redundant timestamps from debug filenames
+- Simplified debug file naming pattern for better readability
+
 ## [0.0.026] - 2025-04-23
 
 ### Added

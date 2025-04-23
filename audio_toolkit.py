@@ -3,7 +3,7 @@
 # Handles audio preprocessing, diarization, and SRT creation
 # 2025-04-23 -JS
 
-__version__ = "0.0.026"  # Version should match CHANGELOG.md
+__version__ = "0.0.031"  # Version should match CHANGELOG.md
 
 import os
 import sys
@@ -289,6 +289,83 @@ def process_audio(args):
     run_dir = os.path.join(output_dir, f"{timestamp}_{input_basename}")
     os.makedirs(run_dir, exist_ok=True)
     log(logging.INFO, f"Created output directory: {run_dir}")
+    
+    # Create version_info.txt file in the run directory with detailed information
+    version_info_path = os.path.join(run_dir, "version_info.txt")
+    
+    # Get input audio file information
+    try:
+        from pydub import AudioSegment
+        input_audio = AudioSegment.from_file(input_file)
+        audio_info = {
+            "duration_seconds": len(input_audio) / 1000,
+            "duration_formatted": str(datetime.timedelta(milliseconds=len(input_audio))),
+            "channels": input_audio.channels,
+            "sample_width_bits": input_audio.sample_width * 8,
+            "frame_rate": input_audio.frame_rate,
+            "frame_count": int(len(input_audio) / 1000 * input_audio.frame_rate),
+            "file_size_bytes": os.path.getsize(input_file),
+            "file_size_mb": os.path.getsize(input_file) / (1024 * 1024)
+        }
+    except Exception as e:
+        log(logging.WARNING, f"Could not get detailed input file info: {str(e)}")
+        audio_info = {"error": f"Could not analyze input file: {str(e)}"}
+    
+    # Get system information
+    import platform
+    system_info = {
+        "python_version": platform.python_version(),
+        "system": platform.system(),
+        "release": platform.release(),
+        "machine": platform.machine(),
+        "processor": platform.processor()
+    }
+    
+    # Write all information to the file
+    with open(version_info_path, "w") as f:
+        # Version and processing information
+        f.write(f"Audio Toolkit Version: {__version__}\n")
+        f.write(f"Processing Date: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        f.write(f"Command: {' '.join(sys.argv)}\n\n")
+        
+        # Input file information
+        f.write("Input File Information:\n")
+        f.write(f"- File: {input_file}\n")
+        if "error" in audio_info:
+            f.write(f"- {audio_info['error']}\n")
+        else:
+            f.write(f"- Duration: {audio_info['duration_formatted']} ({audio_info['duration_seconds']:.2f} seconds)\n")
+            f.write(f"- Channels: {audio_info['channels']}\n")
+            f.write(f"- Sample Width: {audio_info['sample_width_bits']} bits\n")
+            f.write(f"- Sample Rate: {audio_info['frame_rate']} Hz\n")
+            f.write(f"- Frame Count: {audio_info['frame_count']}\n")
+            f.write(f"- File Size: {audio_info['file_size_mb']:.2f} MB ({audio_info['file_size_bytes']} bytes)\n\n")
+        
+        # Processing parameters
+        f.write("Processing Parameters:\n")
+        f.write(f"- Bit Depth: {args.bit_depth}\n")
+        f.write(f"- Sample Rate: {args.sample_rate}\n")
+        f.write(f"- Highpass Cutoff: {args.highpass} Hz\n")
+        f.write(f"- Lowpass Cutoff: {args.lowpass} Hz\n")
+        f.write(f"- Compression Threshold: {args.compression_threshold} dB\n")
+        f.write(f"- Compression Ratio: {args.compression_ratio}:1\n")
+        f.write(f"- Volume Gain: {args.volume_gain} dB\n\n")
+        
+        # Processing flags
+        f.write("Processing Flags:\n")
+        f.write(f"- Skip Preprocessing: {args.skip_preprocessing}\n")
+        f.write(f"- Skip Diarization: {args.skip_diarization}\n")
+        f.write(f"- Skip SRT Generation: {args.skip_srt}\n")
+        f.write(f"- Debug Mode: {args.debug}\n\n")
+        
+        # System information
+        f.write("System Information:\n")
+        f.write(f"- Python Version: {system_info['python_version']}\n")
+        f.write(f"- Operating System: {system_info['system']} {system_info['release']}\n")
+        f.write(f"- Machine: {system_info['machine']}\n")
+        f.write(f"- Processor: {system_info['processor']}\n")
+    
+    log(logging.INFO, f"Created detailed version info file: {version_info_path}")
     
     # Generate output file name based on input file
     output_basename = os.path.splitext(os.path.basename(input_file))[0] + "_processed.wav"
