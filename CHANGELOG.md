@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.022] - 2025-04-23
+
+### Changed
+- Made diarization and SRT generation enabled by default for better user experience
+- Changed command-line flags from opt-in to opt-out (--skip-diarization, --skip-srt)
+- Replaced all print statements with proper logging calls for consistent output
+- Improved file path handling for SRT generation
+
 ## [0.0.021] - 2025-04-23
 
 ### Changed

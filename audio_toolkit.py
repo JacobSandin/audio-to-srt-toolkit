@@ -124,9 +124,9 @@ def parse_args():
     )
     
     parser.add_argument(
-        '--diarize',
+        '--skip-diarization',
         action='store_true',
-        help='Perform speaker diarization on the audio file'
+        help='Skip speaker diarization step'
     )
     
     # Diarization parameters
@@ -153,9 +153,9 @@ def parse_args():
     
     # SRT generation parameters
     parser.add_argument(
-        '--generate-srt',
+        '--skip-srt',
         action='store_true',
-        help='Generate SRT subtitle file from diarization results'
+        help='Skip SRT subtitle file generation'
     )
     
     parser.add_argument(
@@ -316,8 +316,8 @@ def process_audio(args):
             return False
         input_file = output_file  # Use processed file for diarization
     
-    # Perform speaker diarization if requested
-    if args.diarize:
+    # Perform speaker diarization unless explicitly skipped
+    if not args.skip_diarization:
         log(logging.INFO, "Starting speaker diarization")
         
         # Configure diarizer
@@ -344,12 +344,11 @@ def process_audio(args):
         
         log(logging.INFO, "Speaker diarization completed successfully")
         
-        # Generate SRT file if requested
-        if args.generate_srt:
-            print("\n=== Generating SRT subtitle file ===\n")
+        # Generate SRT file unless explicitly skipped
+        if not args.skip_srt and diarization_segments:
+            log(logging.INFO, "Generating SRT subtitle file")
             
             # Get diarization result
-            print("Extracting diarization segments...")
             diarization_result = diarizer.get_diarization_result()
             
             # Create SRT generator
@@ -360,14 +359,13 @@ def process_audio(args):
                 'max_duration': args.max_duration
             }
             
-            print(f"SRT configuration: include_timestamps={args.include_timestamps}, speaker_format='{args.speaker_format}',")
-            print(f"                   max_gap={args.max_gap}s, max_duration={args.max_duration}s")
+            log(logging.INFO, f"SRT configuration: include_timestamps={args.include_timestamps}, speaker_format='{args.speaker_format}', max_gap={args.max_gap}s, max_duration={args.max_duration}s")
             
             from src.audio_processing.srt_generator import SRTGenerator
             srt_generator = SRTGenerator(srt_config)
             
             # Merge segments if needed
-            print(f"Merging segments (max_gap={args.max_gap}s, max_duration={args.max_duration}s)...")
+            log(logging.INFO, f"Merging segments (max_gap={args.max_gap}s, max_duration={args.max_duration}s)...")
             merged_segments = srt_generator.merge_segments(
                 diarization_result,
                 max_gap=args.max_gap,
@@ -375,20 +373,19 @@ def process_audio(args):
             )
             
             # Generate SRT file
-            print("Generating SRT file...")
-            base_name = os.path.splitext(os.path.basename(input_file))[0]
-            srt_file = os.path.join(output_dir, f"{base_name}.srt")
+            log(logging.INFO, "Generating SRT file...")
+            srt_file = os.path.join(output_dir, os.path.splitext(input_basename)[0] + ".srt")
             if not srt_generator.generate_srt(
                 merged_segments, 
                 srt_file,
                 speaker_format=args.speaker_format,
                 include_timestamps=args.include_timestamps
             ):
-                print(f"Error: SRT generation failed")
+                log(logging.ERROR, "SRT generation failed")
                 return False
             
-            print(f"\nSRT file generated successfully: {srt_file}")
-            print("\n=== SRT generation completed ===\n")
+            log(logging.INFO, f"SRT file generated successfully: {srt_file}")
+            log(logging.INFO, "SRT generation completed")
     
     return True
 
