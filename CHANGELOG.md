@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.052] - 2025-04-23
+
+### Fixed
+- Updated tests to match current implementation
+- Fixed test_debug_files_only to reflect current logging behavior
+- Updated model loading tests to handle multiple model loading attempts
+- Ensured all 60 tests pass with the latest changes
+
 ## [0.0.051] - 2025-04-23
 
 ### Fixed
