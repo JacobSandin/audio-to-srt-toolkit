@@ -2,7 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.015] - 2025-04-23
+
+### Changed
+- Improved .windsurfrules structure and clarity
+- Enhanced formatting with clear section dividers
+- Added explicit separation between project-specific and global rules
+- Improved startup behavior description with numbered steps
+- Added implementation notes for better clarity
+- Updated version in all files to match CHANGELOG.md
+
 ## [0.0.014] - 2025-04-23
+
+### Changed
+- Restructured CHANGELOG.md to track each version increment (0.0.001 to 0.0.014)
+- Added __version__ variable to package __init__.py files
+- Created top-level __init__.py with version information
+- Implemented semantic versioning (major.minor.patch) format
+- Each commit now has its own version number in the changelog
 
 ### Changed
 - Updated version numbering system to properly track development progress
