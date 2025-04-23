@@ -53,7 +53,7 @@ def parse_args():
         '--cutoffs',
         type=int,
         nargs='+',
-        default=[150, 250, 350, 450],
+        default=[500, 1000,1500, 2000,2500,3000,3500,4000,4500,5000],
         help='List of highpass cutoff frequencies to test (default: 150 250 350 450)'
     )
     

@@ -206,8 +206,8 @@ def parse_args():
     parser.add_argument(
         '--highpass',
         type=int,
-        default=150,
-        help='High-pass filter cutoff frequency in Hz (default: 150)'
+        default=3750,
+        help='High-pass filter cutoff frequency in Hz (default: 3750, optimal for Swedish dialect isolation)'
     )
     
     parser.add_argument(

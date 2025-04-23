@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.019] - 2025-04-23
+
+### Changed
+- Optimized highpass filter cutoff frequency to 3750Hz based on extensive testing
+- Updated README.md with new findings about optimal filter settings for Swedish dialects
+- Testing showed best results between 3500-4000Hz for dialect clarity and distinction
+
 ## [0.0.018] - 2025-04-23
 
 ### Changed

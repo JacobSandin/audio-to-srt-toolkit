@@ -32,7 +32,7 @@ class AudioPreprocessor:
         self.logger = logging.getLogger(__name__)
         
         # Default settings
-        self.highpass_cutoff = self.config.get('highpass_cutoff', 150)
+        self.highpass_cutoff = self.config.get('highpass_cutoff', 3750)  # Optimal for Swedish dialect isolation - 2025-04-23 -JS
         self.lowpass_cutoff = self.config.get('lowpass_cutoff', 8000)
         self.compression_threshold = self.config.get('compression_threshold', -10.0)
         self.compression_ratio = self.config.get('compression_ratio', 2.0)
