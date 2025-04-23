@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.043] - 2025-04-23
+
+### Added
+- Added pytest.ini configuration to suppress deprecation warnings
+- Improved test output by filtering out third-party library warnings
+
 ## [0.0.042] - 2025-04-23
 
 ### Added
