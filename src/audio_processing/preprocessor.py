@@ -206,11 +206,11 @@ class AudioPreprocessor:
             timestamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
             
             # Create debug filename
-            debug_filename = f"{base_name}.{step_name}.{timestamp}.mp3"
+            debug_filename = f"{base_name}.{step_name}.{timestamp}.wav"
             debug_path = os.path.join(self.debug_dir, debug_filename)
             
-            # Export debug file
-            audio.export(debug_path, format="mp3", bitrate="192k")
+            # Export debug file in WAV format for better quality
+            audio.export(debug_path, format="wav")  # 2025-04-23 - JS
             self.log(logging.DEBUG, f"Saved debug file for {step_name}: {debug_path}")
             
         except Exception as e:

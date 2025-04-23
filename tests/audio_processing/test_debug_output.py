@@ -29,7 +29,7 @@ class TestDebugOutput(unittest.TestCase):
         Set up test environment before each test
         """
         self.temp_dir = tempfile.TemporaryDirectory()
-        self.input_file = os.path.join(self.temp_dir.name, "test_input.mp3")
+        self.input_file = os.path.join(self.temp_dir.name, "test_input.wav")  # 2025-04-23 - JS
         self.output_dir = os.path.join(self.temp_dir.name, "output")
         self.debug_dir = os.path.join(self.output_dir, "debug")
         os.makedirs(self.output_dir, exist_ok=True)
@@ -71,7 +71,7 @@ class TestDebugOutput(unittest.TestCase):
             # Also patch _save_debug_file to track calls
             with patch('src.audio_processing.preprocessor.AudioPreprocessor._save_debug_file', wraps=self.preprocessor._save_debug_file) as mock_save_debug:
                 # Process the audio
-                output_file = os.path.join(self.output_dir, "test_output.mp3")
+                output_file = os.path.join(self.output_dir, "test_output.wav")  # 2025-04-23 - JS
                 self.preprocessor.preprocess(self.input_file, output_file)
                 
                 # Verify that _save_debug_file was called for each expected step

@@ -17,6 +17,9 @@ warnings.filterwarnings("ignore", message="Module 'speechbrain.pretrained' was d
 warnings.filterwarnings("ignore", message="'audioop' is deprecated and slated for removal")
 warnings.filterwarnings("ignore", category=DeprecationWarning, module="matplotlib")
 
+# Specifically filter out the pydub audioop warning
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="pydub.utils")
+
 # Filter out specific remaining pyannote warnings
 warnings.filterwarnings("ignore", message="The get_cmap function was deprecated in Matplotlib 3.7")
 warnings.filterwarnings("ignore", message="`torchaudio.backend.common.AudioMetaData` has been moved to `torchaudio.AudioMetaData`")
