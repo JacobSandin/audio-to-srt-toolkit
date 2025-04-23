@@ -87,16 +87,109 @@ The `audio_toolkit.py` script provides a unified command-line interface for all 
 ./audio_toolkit.py --input-audio your_audio_file.mp3 --diarize --generate-srt --debug
 ```
 
-The toolkit performs the following preprocessing steps:
+## Audio Processing Pipeline
 
-1. **Convert to WAV**: Converts input audio to high-quality WAV format (configurable bit depth and sample rate)
-2. **Vocal Separation**: Extracts vocal content from the audio
-3. **Normalization**: Normalizes audio levels
-4. **Filtering**: Applies high-pass and low-pass filters
-5. **Compression**: Applies dynamic range compression
-6. **Volume Adjustment**: Adjusts the final volume
+The toolkit implements a comprehensive audio processing pipeline optimized for Swedish dialect analysis:
 
-All processing maintains the high-quality WAV format throughout the pipeline to preserve audio quality for dialect analysis.
+```
+Input Audio → High-Quality WAV → Vocal Separation → Filtering → Normalization → Compression → Volume Adjustment → Diarization → SRT Generation
+```
+
+### Detailed Processing Steps
+
+1. **High-Quality WAV Conversion**
+   - Converts input audio to WAV format with configurable bit depth (16/24/32-bit) and sample rate (44.1/48/96kHz)
+   - Higher bit depth and sample rate preserve subtle dialect characteristics
+   - Default: 24-bit, 48kHz for optimal quality-to-size ratio
+
+2. **Vocal Separation (Demucs)**
+   - Uses Demucs deep learning model to separate vocals from background elements
+   - Particularly effective at removing environmental noise (traffic, wind, etc.)
+   - Preserves vocal characteristics critical for dialect analysis
+   - Progress reporting at 0%, 25%, 50%, 75%, and 100% milestones
+
+3. **High-Pass Filtering**
+   - Removes low-frequency noise below the cutoff frequency
+   - Configurable cutoff (default: 150Hz)
+   - Higher cutoffs (250-450Hz) can better isolate speech from background rumble
+   - Especially effective for recordings with motorcycle or traffic noise
+
+4. **Low-Pass Filtering**
+   - Removes high-frequency noise above the cutoff frequency
+   - Configurable cutoff (default: 8000Hz)
+   - Helps reduce hissing and sibilance while preserving speech clarity
+
+5. **Audio Normalization**
+   - Balances audio levels across the entire recording
+   - Makes quiet sections more audible without distorting louder sections
+   - Ensures consistent volume levels for better diarization accuracy
+
+6. **Dynamic Range Compression**
+   - Reduces the difference between loudest and quietest parts
+   - Makes softer speech more audible (important for dialect analysis)
+   - Configurable threshold and ratio
+   - Default: -10dB threshold with 2:1 ratio
+
+7. **Volume Adjustment**
+   - Final gain adjustment to optimize listening level
+   - Configurable gain in dB (default: +3dB)
+
+8. **Speaker Diarization**
+   - Uses advanced ML models to identify and separate different speakers
+   - Optimized for Swedish dialects with similar speech patterns
+   - Multi-stage approach with specialized models for Voice Activity Detection (VAD) and diarization
+   - Configurable speaker count parameters (min/max speakers)
+   - Clustering threshold optimized for distinguishing similar dialects
+
+9. **SRT Generation**
+   - Creates subtitle files from diarization results
+   - Configurable speaker labeling and timestamp formats
+   - Segment merging to combine consecutive utterances from the same speaker
+   - Customizable gap and duration parameters
+
+All processing maintains the high-quality WAV format throughout the pipeline to preserve audio quality for dialect analysis. Debug mode saves intermediate files at each step for analysis and troubleshooting.
+
+### Processing Flow Diagram
+
+```
+┌─────────────┐     ┌──────────────┐     ┌─────────────┐     ┌───────────┐
+│  Input      │────▶│ High-Quality │────▶│  Vocal      │────▶│ High-Pass │
+│  Audio File │     │  WAV         │     │  Separation │     │ Filter    │
+└─────────────┘     └──────────────┘     └─────────────┘     └───────────┘
+        │                                                           ▼
+        │                                                    ┌───────────┐
+        │                                                    │ Low-Pass  │
+        │                                                    │ Filter    │
+        │                                                    └───────────┘
+        │                                                           ▼
+        │                                                    ┌───────────┐
+        │                                                    │ Normalize │
+        │                                                    │ Audio     │
+        │                                                    └───────────┘
+        │                                                           ▼
+        │                                                    ┌───────────┐
+        │                                                    │ Compress  │
+        │                                                    │ Dynamic   │
+        │                                                    │ Range     │
+        │                                                    └───────────┘
+        │                                                           ▼
+        │                                                    ┌───────────┐
+        │                                                    │ Adjust    │
+        │                                                    │ Volume    │
+        │                                                    └───────────┘
+        │                                                           ▼
+        ▼                                                    ┌───────────┐
+┌─────────────┐     ┌──────────────┐     ┌─────────────┐    │ Processed │
+│  Speaker    │◀────│ Voice        │◀────│ Diarization │◀───│ Audio     │
+│  Segments   │     │ Activity     │     │ Model       │    │ File      │
+└─────────────┘     │ Detection    │     └─────────────┘    └───────────┘
+        │            └──────────────┘
+        ▼
+┌─────────────┐
+│  SRT        │
+│  Subtitles  │
+└─────────────┘
+```
 
 For diarization, the toolkit uses the following approach:
 

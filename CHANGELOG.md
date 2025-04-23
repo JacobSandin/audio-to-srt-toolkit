@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.017] - 2025-04-23
+
+### Changed
+- Enhanced README.md with detailed audio processing pipeline documentation
+- Added comprehensive flow diagram showing all processing steps
+- Expanded descriptions of each processing stage with parameters and purpose
+- Added information about highpass filter cutoff options (150-450Hz)
+
 ## [0.0.016] - 2025-04-23
 
 ### Changed
