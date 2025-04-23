@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.023] - 2025-04-23
+
+### Fixed
+- Fixed compatibility issue with the latest PyAnnote speaker diarization API
+- Updated how clustering_threshold parameter is set to match the new API requirements
+- Resolved error "SpeakerDiarization.apply() got an unexpected keyword argument 'clustering_threshold'"
+- Ensured proper generation of .segments files for all speaker counts
+
 ## [0.0.022] - 2025-04-23
 
 ### Changed

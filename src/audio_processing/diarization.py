@@ -117,10 +117,20 @@ class SpeakerDiarizer:
             for model_name in diarization_models:
                 try:
                     self.log(logging.INFO, f"Trying to load diarization model: {model_name}")
+                    # Load the pipeline with the clustering threshold parameter
                     self.diarization_pipeline = Pipeline.from_pretrained(
                         model_name,
                         use_auth_token=self.huggingface_token
                     )
+                    
+                    # Set the clustering threshold parameter for the pipeline
+                    # In newer PyAnnote versions, we need to set this as a parameter of the pipeline
+                    # rather than passing it to the apply() method
+                    if hasattr(self.diarization_pipeline, "instantiate_params"):
+                        self.log(logging.INFO, f"Setting clustering_threshold={self.clustering_threshold} for diarization pipeline")
+                        self.diarization_pipeline.instantiate_params = {
+                            "clustering": {"threshold": self.clustering_threshold}
+                        }
                     self.log(logging.INFO, f"Successfully loaded diarization model: {model_name}")
                     break
                 except Exception as e:
@@ -287,11 +297,13 @@ class SpeakerDiarizer:
                     
                     # Run diarization with the current speaker count
                     with ProgressHook() as hook:
+                        # Configure the pipeline parameters
+                        # Note: clustering_threshold is now set during pipeline initialization, not in apply()
+                        # For newer PyAnnote versions, we need to set parameters differently
                         diarization = self.diarization_pipeline(
                             input_file, 
                             num_speakers=num_speakers, 
-                            hook=hook,
-                            clustering_threshold=self.clustering_threshold
+                            hook=hook
                         )
                     
                     # Process results for this run
@@ -348,10 +360,10 @@ class SpeakerDiarizer:
                     
                     # Run diarization with auto speaker detection
                     with ProgressHook() as hook:
+                        # For newer PyAnnote versions, clustering_threshold is set during initialization
                         diarization = self.diarization_pipeline(
                             input_file, 
-                            hook=hook,
-                            clustering_threshold=self.clustering_threshold
+                            hook=hook
                         )
                     
                     # Process results
