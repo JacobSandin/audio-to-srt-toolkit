@@ -413,10 +413,33 @@ def check_dependencies():
     try:
         import ctypes
         try:
-            # Try to load the FFmpeg libraries directly
-            ctypes.CDLL("libavutil.so.58")
-            ctypes.CDLL("libavcodec.so.60")
-            log(logging.DEBUG, "FFmpeg libraries found")
+            # Try to find FFmpeg libraries with different version numbers
+            # First check if ffmpeg command is available
+            import subprocess
+            try:
+                subprocess.run(["ffmpeg", "-version"], capture_output=True, check=True)
+                log(logging.DEBUG, "FFmpeg command is available")
+                
+                # Try to load common versions of libavutil
+                ffmpeg_found = False
+                for lib_version in ["libavutil.so", "libavutil.so.58", "libavutil.so.57", "libavutil.so.56"]:
+                    try:
+                        ctypes.CDLL(lib_version)
+                        ffmpeg_found = True
+                        log(logging.DEBUG, f"Found FFmpeg library: {lib_version}")
+                        break
+                    except OSError:
+                        continue
+                
+                if ffmpeg_found:
+                    log(logging.DEBUG, "FFmpeg libraries found")
+                else:
+                    log(logging.WARNING, "FFmpeg command is available but libraries not found in standard locations")
+                    log(logging.WARNING, "This might cause issues with some audio processing functions")
+            except (subprocess.SubprocessError, FileNotFoundError):
+                log(logging.ERROR, "FFmpeg command not found. Please install FFmpeg with:")
+                log(logging.ERROR, "sudo apt-get install ffmpeg libavutil-dev libavcodec-dev libavformat-dev")
+                missing_deps.append("ffmpeg")
         except OSError:
             log(logging.ERROR, "Missing FFmpeg libraries. Please install them with:")
             log(logging.ERROR, "sudo apt-get install ffmpeg libavutil-dev libavcodec-dev libavformat-dev")
