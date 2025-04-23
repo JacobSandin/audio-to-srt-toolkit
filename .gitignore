@@ -19,6 +19,11 @@
 /old_tests/*.txt
 /old_tests/*.json
 
+# Exclude debug and log directories
+/logs/
+/debug/
+**/debug/
+
 # But include Python files
 !*.py
 

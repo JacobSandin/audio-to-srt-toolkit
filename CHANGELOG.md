@@ -10,10 +10,14 @@ All notable changes to this project will be documented in this file.
 - Advanced diarization script with multi-stage processing for Swedish dialects
 - Voice Activity Detection using pyannote/voice-activity-detection
 - GPU optimization with TF32 acceleration and memory management
-- Support for distinguishing between similar Swedish dialects
+- Support for distinguishing between speakers with similar dialects
 - Audio preprocessing capabilities to enhance dialect differences
 - Added .gitignore to exclude audio files and personal data
 - Created comprehensive README.md with usage instructions
+- Implemented unified audio_toolkit.py command with modular architecture
+- Created test-driven development structure with tests/ and src/ directories
+- Added audio preprocessing pipeline with demucs, normalization, filtering, and compression
+- Added debug mode with intermediate file output for each processing step
 
 ### Changed
 - Organized all scripts in the old_tests directory

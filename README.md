@@ -49,6 +49,51 @@ export HF_TOKEN=your_huggingface_token
 
 ## Usage
 
+### Audio Toolkit Command
+
+The `audio_toolkit.py` script provides a unified command-line interface for all audio processing tasks:
+
+```bash
+# Basic usage
+./audio_toolkit.py --input-audio your_audio_file.mp3
+
+# With custom output directory
+./audio_toolkit.py --input-audio your_audio_file.mp3 --output-dir /path/to/output
+
+# With audio processing options
+./audio_toolkit.py --input-audio your_audio_file.mp3 --highpass 200 --lowpass 7000 --gain 8
+
+# With debug mode (saves intermediate files for each processing step)
+./audio_toolkit.py --input-audio your_audio_file.mp3 --debug
+```
+
+The toolkit performs the following preprocessing steps:
+1. Vocal separation using demucs
+2. Audio normalization
+3. High-pass filtering to emphasize dialect differences
+4. Compression to balance audio levels
+5. Volume adjustment to ensure voices are clearly audible
+
+### Debug Mode
+
+When running with the `--debug` flag, the toolkit will save intermediate audio files for each processing step in a `debug` subdirectory of your output directory. Each file includes:
+
+- The original filename
+- The processing step name
+- A timestamp
+
+For example:
+```
+debug/recording.vocals.20250423-140815.mp3
+debug/recording.highpass.20250423-140815.mp3
+debug/recording.lowpass.20250423-140815.mp3
+debug/recording.compression.20250423-140815.mp3
+debug/recording.normalize.20250423-140815.mp3
+debug/recording.volume.20250423-140815.mp3
+```
+
+This is useful for diagnosing issues with specific processing steps or fine-tuning parameters.
+
 ### Speaker Diarization
 
 ```bash
