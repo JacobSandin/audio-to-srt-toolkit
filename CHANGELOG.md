@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.0.001] - 2025-04-23
+## [0.0.002] - 2025-04-23
 
 ### Added
 - Initial project setup with old_tests directory containing all scripts
