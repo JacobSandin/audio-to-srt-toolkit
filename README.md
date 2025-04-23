@@ -66,7 +66,7 @@ The `audio_toolkit.py` script provides a unified command-line interface for all 
 ./audio_toolkit.py --input-audio your_audio_file.mp3 --bit-depth 24 --sample-rate 48000
 
 # With audio processing options
-./audio_toolkit.py --input-audio your_audio_file.mp3 --highpass 200 --lowpass 7000 --volume-gain 8
+./audio_toolkit.py --input-audio your_audio_file.mp3 --highpass 200 --lowpass 7000 --volume-gain 4
 
 # With debug mode (saves intermediate files for each processing step)
 ./audio_toolkit.py --input-audio your_audio_file.mp3 --debug

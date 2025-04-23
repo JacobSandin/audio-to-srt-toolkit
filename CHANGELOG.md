@@ -22,6 +22,8 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 - Organized all scripts in the old_tests directory
+- Improved error handling and logging
+- Reduced default volume gain from 6.0 dB to 3.0 dB for better audio quality
 - Updated command syntax to use "if test $status -eq 0" instead of "if [ $? -eq 0 ]"
 
 ## [0.0.000] - Former Unreleased

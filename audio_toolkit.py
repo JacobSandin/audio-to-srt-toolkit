@@ -157,8 +157,8 @@ def parse_args():
     parser.add_argument(
         '--volume-gain',
         type=float,
-        default=6.0,
-        help='Volume gain in dB (default: 6.0)'
+        default=3.0,
+        help='Volume gain in dB (default: 3.0)'
     )
     
     parser.add_argument(
