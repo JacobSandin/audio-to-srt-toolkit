@@ -2,6 +2,90 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.041] - 2025-04-23
+
+### Added
+- Added config.yaml file for external configuration
+- Implemented Hugging Face token configuration via config file
+- Added clear warnings for missing authentication tokens
+- Added fallback to environment variables when config is not available
+
+## [0.0.040] - 2025-04-23
+
+### Fixed
+- Added missing subprocess import in audio_toolkit.py
+- Fixed dependency checking that was causing NameError exceptions
+- Ensured proper imports for all system modules
+
+## [0.0.039] - 2025-04-23
+
+### Fixed
+- Completely redesigned Demucs progress bar handling for perfect display
+- Eliminated all progress bar interception and processing
+- Used direct subprocess execution to preserve terminal control sequences
+- Removed all custom progress tracking that was interfering with tqdm
+- Fixed inconsistent progress bar display with native tqdm rendering
+
+## [0.0.038] - 2025-04-23
+
+### Fixed
+- Enhanced FFmpeg dependency checking with specific version detection
+- Added detailed checks for libavutil, libavcodec, and libavformat with version numbers
+- Improved error messages for missing FFmpeg libraries
+- Provided more specific installation instructions for missing dependencies
+- Added better logging of FFmpeg library detection results
+
+## [0.0.037] - 2025-04-23
+
+### Fixed
+- Completely redesigned progress bar handling using direct stdout passthrough
+- Fixed inconsistent progress bar display by letting tqdm manage its own terminal output
+- Used sys.stdout.write and flush for proper terminal control sequence handling
+- Eliminated all progress bar detection and formatting to preserve native tqdm behavior
+- Maintained error detection and highlighting while preserving progress display
+
+## [0.0.036] - 2025-04-23
+
+### Fixed
+- Fixed inconsistent progress bar display with improved detection of tqdm formats
+- Removed color formatting from progress bars to preserve original tqdm formatting
+- Added flush=True to progress output for more reliable terminal updates
+- Enhanced progress bar detection to catch all tqdm variants including seconds/s format
+
+## [0.0.035] - 2025-04-23
+
+### Fixed
+- Fixed discrepancy between command-line default gain (3.0 dB) and internal default gain (6.0 dB)
+- Updated gain adjustment log message to show decimal precision
+- Ensured consistent volume gain settings throughout the application
+
+## [0.0.034] - 2025-04-23
+
+### Fixed
+- Completely removed all progress percentage print statements
+- Eliminated all logging of progress information
+- Let native tqdm progress bars display without any interference
+- Removed redundant 0% and 100% progress messages
+- Maintained error detection and reporting for critical issues
+
+## [0.0.033] - 2025-04-23
+
+### Fixed
+- Completely redesigned progress bar handling to preserve tqdm progress bar formatting
+- Removed all console output except for progress bars and error messages
+- Eliminated milestone percentage prints that were disrupting progress bar display
+- Added error detection to highlight and log any errors during processing
+- Ensured clean console output with only progress bars visible during processing
+
+## [0.0.032] - 2025-04-23
+
+### Fixed
+- Added custom logging filter to completely suppress progress bars from log files
+- Improved detection of tqdm progress bar patterns to prevent them from being logged
+- Enhanced progress bar handling to show in console but not in log files
+- Fixed issue with progress bars appearing in debug logs
+- Implemented comprehensive solution for clean log files without progress bar formatting
+
 ## [0.0.031] - 2025-04-23
 
 ### Fixed

@@ -19,6 +19,9 @@
 /old_tests/*.txt
 /old_tests/*.json
 
+# Configuration files with sensitive information
+config.yaml
+
 # Exclude debug and log directories
 /logs/
 /debug/

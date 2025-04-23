@@ -3,7 +3,7 @@
 # Handles audio preprocessing, diarization, and SRT creation
 # 2025-04-23 -JS
 
-__version__ = "0.0.031"  # Version should match CHANGELOG.md
+__version__ = "0.0.041"  # Version should match CHANGELOG.md
 
 import os
 import sys
@@ -11,6 +11,8 @@ import logging
 import argparse
 import datetime
 import warnings
+import subprocess
+import yaml
 import torch
 
 # Filter out warnings from dependencies
@@ -57,6 +59,19 @@ def log(level, *messages, **kwargs):
         logger.critical(*messages, **kwargs)
 
 
+# Custom filter to suppress progress bar output in logs
+class ProgressBarFilter(logging.Filter):
+    """Filter out progress bar output from logs."""
+    def filter(self, record):
+        # Check if the log message contains progress bar indicators
+        if hasattr(record, 'msg'):
+            msg = str(record.msg)
+            # Check for common progress bar patterns
+            if '|' in msg and '%' in msg and any(char in msg for char in ['█', '▉', '▊', '▋', '▌', '▍', '▎', 'it/s', 's/it']):
+                return False  # Filter out progress bars
+        return True  # Keep all other messages
+
+
 def setup_logging(args):
     """
     Set up logging based on command-line arguments.
@@ -68,29 +83,31 @@ def setup_logging(args):
     logs_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
     os.makedirs(logs_dir, exist_ok=True)
     
-    # Set up log file with timestamp
+    # Generate log file name with timestamp
     timestamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
     log_file = os.path.join(logs_dir, f'audio-toolkit-{timestamp}.log')
     
-    # Determine log level
+    # Set up logging level based on arguments
     if args.debug:
-        console_level = logging.DEBUG
-        file_level = logging.DEBUG
+        log_level = logging.DEBUG
     elif args.quiet:
-        console_level = logging.WARNING
-        file_level = logging.INFO
+        log_level = logging.WARNING
     else:
-        console_level = logging.INFO
-        file_level = logging.DEBUG
+        log_level = logging.INFO
+    
+    # Create file handler with progress bar filter
+    file_handler = logging.FileHandler(log_file)
+    file_handler.addFilter(ProgressBarFilter())  # Add filter to suppress progress bars
+    
+    # Create console handler (if not quiet)
+    console_handler = logging.StreamHandler() if not args.quiet else logging.NullHandler()
+    console_handler.addFilter(ProgressBarFilter())  # Add filter to console output too
     
     # Configure logging
     logging.basicConfig(
-        level=min(console_level, file_level),
+        level=log_level,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.FileHandler(log_file),
-            logging.StreamHandler(sys.stdout) if not args.quiet or args.debug else logging.NullHandler()
-        ]
+        handlers=[file_handler, console_handler]
     )
     
     log(logging.INFO, f"Logging initialized. Log file: {log_file}")
@@ -262,6 +279,28 @@ def parse_args():
     return parser.parse_args()
 
 
+def load_config():
+    """
+    Load configuration from config.yaml file.
+    
+    Returns:
+        dict: Configuration dictionary or empty dict if file not found/invalid
+    """
+    config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.yaml")
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, 'r') as f:
+                config = yaml.safe_load(f)
+            log(logging.INFO, f"Loaded configuration from {config_path}")
+            return config
+        except Exception as e:
+            log(logging.WARNING, f"Error loading config file: {str(e)}")
+    else:
+        log(logging.WARNING, f"Config file not found at {config_path}")
+    
+    # Return empty config if file not found or error occurred
+    return {}
+
 def process_audio(args):
     """
     Process audio file according to command-line arguments.
@@ -416,6 +455,25 @@ def process_audio(args):
     if not args.skip_diarization:
         log(logging.INFO, "Starting speaker diarization")
         
+        # Load configuration from config file
+        config_data = load_config()
+        
+        # Get Hugging Face token from config file or environment variable
+        hf_token = None
+        if config_data and 'authentication' in config_data and 'huggingface_token' in config_data['authentication']:
+            hf_token = config_data['authentication']['huggingface_token']
+            if hf_token == "your_token_here":
+                log(logging.WARNING, "Default Hugging Face token found in config.yaml. Please update with your actual token.")
+                hf_token = None
+        
+        # Fall back to environment variable if not in config
+        if not hf_token:
+            hf_token = os.environ.get('HF_TOKEN')
+            if not hf_token:
+                log(logging.WARNING, "No Hugging Face token found in config.yaml or HF_TOKEN environment variable.")
+                log(logging.WARNING, "You may encounter 401 authentication errors when accessing Hugging Face models.")
+                log(logging.WARNING, "Please update config.yaml with your token from https://huggingface.co/settings/tokens")
+        
         # Configure diarizer
         diarization_config = {
             'debug': args.debug,
@@ -424,7 +482,7 @@ def process_audio(args):
             'max_speakers': args.max_speakers,
             'clustering_threshold': args.clustering_threshold,
             'use_gpu': torch.cuda.is_available(),
-            'huggingface_token': os.environ.get('HF_TOKEN'),
+            'huggingface_token': hf_token,
             'batch_size': 32
         }
         
@@ -513,30 +571,65 @@ def check_dependencies():
         try:
             # Try to find FFmpeg libraries with different version numbers
             # First check if ffmpeg command is available
-            import subprocess
             try:
                 subprocess.run(["ffmpeg", "-version"], capture_output=True, check=True)
                 log(logging.DEBUG, "FFmpeg command is available")
                 
-                # Try to load common versions of libavutil
+                # Now check for specific libraries with version numbers
                 ffmpeg_found = False
-                for lib_version in ["libavutil.so", "libavutil.so.58", "libavutil.so.57", "libavutil.so.56"]:
+                
+                # Check for libavutil with different version numbers
+                avutil_found = False
+                for version in ["58", "57", "56", "55", ""]:
                     try:
-                        ctypes.CDLL(lib_version)
-                        ffmpeg_found = True
-                        log(logging.DEBUG, f"Found FFmpeg library: {lib_version}")
+                        lib_name = f"libavutil.so.{version}" if version else "libavutil.so"
+                        ctypes.CDLL(lib_name)
+                        avutil_found = True
+                        log(logging.DEBUG, f"Found FFmpeg library: {lib_name}")
                         break
                     except OSError:
-                        continue
+                        log(logging.DEBUG, f"Could not find FFmpeg library: {lib_name}")
+                
+                # Check for libavcodec with different version numbers
+                avcodec_found = False
+                for version in ["60", "59", "58", ""]:
+                    try:
+                        lib_name = f"libavcodec.so.{version}" if version else "libavcodec.so"
+                        ctypes.CDLL(lib_name)
+                        avcodec_found = True
+                        log(logging.DEBUG, f"Found FFmpeg library: {lib_name}")
+                        break
+                    except OSError:
+                        log(logging.DEBUG, f"Could not find FFmpeg library: {lib_name}")
+                
+                # Check for libavformat with different version numbers
+                avformat_found = False
+                for version in ["60", "59", "58", ""]:
+                    try:
+                        lib_name = f"libavformat.so.{version}" if version else "libavformat.so"
+                        ctypes.CDLL(lib_name)
+                        avformat_found = True
+                        log(logging.DEBUG, f"Found FFmpeg library: {lib_name}")
+                        break
+                    except OSError:
+                        log(logging.DEBUG, f"Could not find FFmpeg library: {lib_name}")
+                
+                ffmpeg_found = avutil_found and avcodec_found and avformat_found
                 
                 if ffmpeg_found:
-                    log(logging.DEBUG, "FFmpeg libraries found")
+                    log(logging.DEBUG, "All required FFmpeg libraries found")
                 else:
-                    warning_msg = "FFmpeg command is available but libraries not found in standard locations"
-                    print(f"\033[93mWARNING: {warning_msg}\033[0m")  # Yellow text for warning
-                    print("\033[93mWARNING: This might cause issues with some audio processing functions\033[0m")
+                    missing_libs = []
+                    if not avutil_found: missing_libs.append("libavutil")
+                    if not avcodec_found: missing_libs.append("libavcodec")
+                    if not avformat_found: missing_libs.append("libavformat")
+                    
+                    warning_msg = f"FFmpeg command is available but libraries not found: {', '.join(missing_libs)}"
                     log(logging.WARNING, warning_msg)
-                    log(logging.WARNING, "This might cause issues with some audio processing functions")
+                    print(f"\033[93mWARNING: {warning_msg}\033[0m")
+                    print("\033[93m       This may cause issues with audio processing\033[0m")
+                    print("\033[93m       Install the missing FFmpeg development libraries:\033[0m")
+                    print("\033[93m       sudo apt-get install libavutil-dev libavcodec-dev libavformat-dev\033[0m")
             except (subprocess.SubprocessError, FileNotFoundError):
                 error_msg = "FFmpeg command not found. Please install FFmpeg with:"
                 print(f"\033[91mERROR: {error_msg}\033[0m")

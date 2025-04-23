@@ -36,7 +36,7 @@ class AudioPreprocessor:
         self.lowpass_cutoff = self.config.get('lowpass_cutoff', 8000)
         self.compression_threshold = self.config.get('compression_threshold', -10.0)
         self.compression_ratio = self.config.get('compression_ratio', 2.0)
-        self.default_gain = self.config.get('default_gain', 6)  # +6dB gain
+        self.default_gain = self.config.get('default_gain', 3.0)  # +3dB gain
         
         # Debug settings
         self.debug_mode = self.config.get('debug', False)
@@ -359,7 +359,7 @@ class AudioPreprocessor:
             self._save_debug_file(audio, input_file, "normalize")
             self.log(logging.INFO, f"Normalization completed successfully")
             
-            self.log(logging.INFO, f"Adjusting volume (gain: {self.default_gain}dB)...")
+            self.log(logging.INFO, f"Adjusting volume (gain: {self.default_gain:.1f}dB)...")
             audio = self.adjust_volume(audio, gain_db=self.default_gain)
             self._save_debug_file(audio, input_file, "volume")
             self.log(logging.INFO, f"Volume adjustment completed successfully")
@@ -480,105 +480,12 @@ class AudioPreprocessor:
                 
                 self.log(logging.DEBUG, f"Running command: {' '.join(cmd)}")
                 
-                # Start process with real-time output monitoring
-                process = subprocess.Popen(
-                    cmd,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,  # Redirect stderr to stdout for unified output
-                    universal_newlines=True,   # Return strings instead of bytes
-                    bufsize=1                 # Line buffered
-                )
+                # Use subprocess.run directly without capturing output
+                # This allows tqdm to directly control the terminal
+                result = subprocess.run(cmd)
                 
-                # Process output in real-time to provide progress updates
-                last_progress = 0
-                progress_line = ""
-                model_count = 1  # Default to 1 model
-                current_model = 0
-                
-                # Look for progress indicators in the output
-                for line in process.stdout:
-                    line = line.strip()
-                    
-                    # Handle progress bars differently from other output
-                    if "|" in line and "%" in line and ("█" in line or "▉" in line or "▊" in line or "▋" in line or "▌" in line or "▍" in line or "▎" in line):
-                        # Print progress bars directly to console with cyan color
-                        print(f"\033[96m{line}\033[0m")
-                    else:
-                        # For non-progress output, print in normal color and log at DEBUG level
-                        if line.strip():
-                            print(line)
-                            self.log(logging.DEBUG, line)
-                    
-                    # Check if this is a bag of models and update the count
-                    if "bag of" in line and "models" in line:
-                        try:
-                            model_count = int(line.split("bag of")[1].split("models")[0].strip())
-                            self.log(logging.INFO, f"Demucs will process using {model_count} models")
-                        except:
-                            pass
-                    
-                    # Track which model is currently processing
-                    if "Model #" in line:
-                        try:
-                            current_model = int(line.split("Model #")[1].split(":")[0].strip())
-                            self.log(logging.INFO, f"Processing with model {current_model} of {model_count}")
-                        except:
-                            pass
-                    
-                    # Handle progress information for the new htdemucs model
-                    if "|" in line and "%" in line and ("it/s" in line or "s/it" in line):
-                        try:
-                            # New format has progress like: 100%|██████████| 30/30 [00:21<00:00,  1.40it/s]
-                            progress_part = line.split("|")[0].strip()
-                            if "%" in progress_part:
-                                progress = int(progress_part.split("%")[0].strip())
-                                
-                                # Calculate overall progress considering multiple models
-                                if model_count > 1 and current_model > 0:
-                                    overall_progress = int((current_model - 1) * 100 / model_count + progress / model_count)
-                                else:
-                                    overall_progress = progress
-                                
-                                # Only log at significant milestones (0%, 25%, 50%, 75%, 100%)
-                                milestone_reached = False
-                                for milestone in [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]:
-                                    if overall_progress >= milestone and last_progress < milestone:
-                                        milestone_reached = True
-                                        break
-                                
-                                if milestone_reached:
-                                    # Only print milestone progress updates, not every percentage
-                                    print(f"\033[96mDemucs progress: {overall_progress}%\033[0m")
-                                    last_progress = overall_progress
-                        except Exception as e:
-                            # If we can't parse the progress, just continue
-                            pass
-                    
-                    # Handle the old progress format as well
-                    elif "Progress" in line:
-                        try:
-                            progress = int(line.split('%')[0].split()[-1])
-                            
-                            # Only log at significant milestones (0%, 25%, 50%, 75%, 100%)
-                            if progress in [0, 25, 50, 75, 100] and progress > last_progress:
-                                print(f"\033[96mDemucs progress: {progress}%\033[0m")
-                                last_progress = progress
-                        except:
-                            pass
-                    
-                    # Log important status messages at INFO level
-                    elif any(keyword in line for keyword in ["Separated", "Saving", "Done", "Model", "Using", "Loading"]):
-                        self.log(logging.INFO, line)
-                    
-                    # Log everything else at DEBUG level
-                    else:
-                        self.log(logging.DEBUG, line)
-                
-                # Wait for process to complete
-                process.wait()
-                
-                if process.returncode != 0:
-                    self.log(logging.ERROR, f"Demucs failed with return code {process.returncode}")
+                if result.returncode != 0:
+                    self.log(logging.ERROR, f"Demucs failed with return code {result.returncode}")
                     return False
                 
                 self.log(logging.INFO, "Demucs processing completed successfully")
@@ -687,8 +594,8 @@ class AudioPreprocessor:
         result = np.array([], dtype=samples.dtype)
         last_reported_percentage = -1
         
-        # Report 0% at start
-        print("\033[96mCompression progress: 0%\033[0m")
+        # We don't need to report progress percentages anymore
+        # The tqdm-style progress bar will show progress visually
         
         # Process each chunk with progress reporting
         for i in range(0, total_samples, chunk_size):
@@ -696,10 +603,9 @@ class AudioPreprocessor:
             current_position = i
             current_percentage = int((current_position / total_samples) * 100)
             
-            # Report at every 10% increment (10%, 20%, 30%, etc.)
-            # Skip 0% (already reported) and 100% (will report at end)
+            # Just track progress without printing anything
+            # This avoids disrupting any progress bar display
             if current_percentage % 10 == 0 and current_percentage > last_reported_percentage and current_percentage > 0 and current_percentage < 100:
-                print(f"\033[96mCompression progress: {current_percentage}%\033[0m")
                 last_reported_percentage = current_percentage
             
             # Get the current chunk
@@ -731,8 +637,8 @@ class AudioPreprocessor:
             # Append to result
             result = np.append(result, compressed)
         
-        # Report 100% completion
-        print("\033[96mCompression progress: 100%\033[0m")
+        # No need to report 100% completion
+        # Let the progress bar show completion visually
         
         # Convert back to AudioSegment
         from pydub import AudioSegment

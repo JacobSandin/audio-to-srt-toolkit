@@ -1,0 +1,39 @@
+# Audio Toolkit Configuration Template
+# 2025-04-23 -JS
+# Copy this file to config.yaml and update with your settings
+
+# Authentication settings
+authentication:
+  # Your Hugging Face token for accessing models
+  # Get this from https://huggingface.co/settings/tokens
+  huggingface_token: "your_token_here"
+
+# Audio processing settings
+audio_processing:
+  # Default models to use
+  models:
+    primary:
+      - tensorlake/speaker-diarization-3.1  # Preferred for Swedish dialects
+    fallback:
+      - pyannote/speaker-diarization-3.1
+    additional:
+      - pyannote/segmentation-3.0
+      - pyannote/voice-activity-detection
+  
+  # Default parameters
+  parameters:
+    min_speakers: 2
+    max_speakers: 4
+    clustering_threshold: 0.65
+  
+  # Performance optimization
+  optimization:
+    use_gpu: true
+    tf32_acceleration: true
+    optimize_batch_size: true
+
+# Swedish dialect processing settings
+swedish_dialect_processing:
+  speaker_count_strategy: higher  # Use 3-4 speakers even for 2-speaker audio
+  filtering: high-pass  # Emphasize dialect differences
+  segmentation: detect_subtle_changes
