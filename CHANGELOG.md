@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.049] - 2025-04-23
+
+### Fixed
+- Improved console logging with clearer, more concise progress messages
+- Moved setup and detailed information messages to DEBUG level
+- Added user-friendly step completion messages ("WAV file created", "Vocal separation completed")
+- Simplified file paths in console output to show only filenames, not full paths
+- Kept only essential progress information at INFO level
+
 ## [0.0.048] - 2025-04-23
 
 ### Fixed

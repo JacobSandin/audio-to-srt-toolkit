@@ -3,7 +3,7 @@
 # Handles audio preprocessing, diarization, and SRT creation
 # 2025-04-23 -JS
 
-__version__ = "0.0.048"  # Version should match CHANGELOG.md
+__version__ = "0.0.049"  # Version should match CHANGELOG.md
 
 import os
 import sys
@@ -430,7 +430,7 @@ def process_audio(args):
         f.write(f"- Machine: {system_info['machine']}\n")
         f.write(f"- Processor: {system_info['processor']}\n")
     
-    log(logging.INFO, f"Created detailed version info file: {version_info_path}")
+    log(logging.DEBUG, f"Created detailed version info file: {version_info_path}")
     
     # Generate output file name based on input file
     output_basename = os.path.splitext(os.path.basename(input_file))[0] + "_processed.wav"
@@ -441,7 +441,7 @@ def process_audio(args):
     if args.debug or args.debug_files_only:
         debug_dir = os.path.join(run_dir, 'debug')
         os.makedirs(debug_dir, exist_ok=True)
-        log(logging.INFO, f"Debug files will be saved to {debug_dir}")
+        log(logging.DEBUG, f"Debug files will be saved to {debug_dir}")
     
     # Configure audio preprocessor
     config = {
@@ -459,8 +459,8 @@ def process_audio(args):
     }
     
     log(logging.INFO, f"Processing audio file: {input_file}")
-    log(logging.INFO, f"Output will be saved to: {output_file}")
-    log(logging.INFO, f"Using {config['bit_depth']}-bit depth and {config['sample_rate']}Hz sample rate")
+    log(logging.DEBUG, f"Output will be saved to: {output_file}")
+    log(logging.DEBUG, f"Using {config['bit_depth']}-bit depth and {config['sample_rate']}Hz sample rate")
     
     # Import here to ensure the mock in tests works correctly
     from src.audio_processing.preprocessor import AudioPreprocessor

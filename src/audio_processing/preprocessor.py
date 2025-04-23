@@ -95,7 +95,7 @@ class AudioPreprocessor:
             bool: True if conversion was successful, False otherwise
         """
         try:
-            self.log(logging.INFO, f"Converting {input_file} to {bit_depth}-bit {sample_rate}Hz WAV")
+            self.log(logging.INFO, f"Creating WAV file from {os.path.basename(input_file)}")
             
             # Load the input audio
             audio = AudioSegment.from_file(input_file)
@@ -132,7 +132,7 @@ class AudioPreprocessor:
             # Save debug file if debug mode is enabled
             self._save_debug_file(converted_audio, input_file, "wav_conversion")
             
-            self.log(logging.INFO, f"Conversion completed: {output_file}")
+            self.log(logging.INFO, f"WAV file created and saved to {os.path.basename(output_file)}")
             return True
             
         except Exception as e:
@@ -150,7 +150,7 @@ class AudioPreprocessor:
         Returns:
             bool: True if preprocessing was successful, False otherwise
         """
-        self.log(logging.INFO, f"Starting preprocessing of {input_file}")
+        self.log(logging.DEBUG, f"Starting preprocessing of {input_file}")
         
         # Get base name of input file without extension
         base_name = os.path.splitext(os.path.basename(input_file))[0]
@@ -198,7 +198,7 @@ class AudioPreprocessor:
                 self.log(logging.ERROR, "Audio processing failed")
                 return False
             
-            self.log(logging.INFO, f"Preprocessing completed successfully: {output_file}")
+            self.log(logging.INFO, f"Preprocessing completed successfully")
             return True
             
         finally:
@@ -224,8 +224,8 @@ class AudioPreprocessor:
         Returns:
             bool: True if separation was successful, False otherwise
         """
-        self.log(logging.INFO, f"Starting vocal separation process on {input_file}")
-        self.log(logging.INFO, f"Using Demucs to extract vocals from background elements...")
+        self.log(logging.INFO, f"Running vocal separation step")
+        self.log(logging.DEBUG, f"Using Demucs to extract vocals from background elements...")
         
         # Run Demucs for vocal separation
         start_time = time.time()
@@ -233,7 +233,8 @@ class AudioPreprocessor:
         end_time = time.time()
         
         if success:
-            self.log(logging.INFO, f"Vocal separation completed successfully in {end_time - start_time:.2f} seconds")
+            self.log(logging.INFO, f"Vocal separation completed")
+            self.log(logging.DEBUG, f"Vocal separation took {end_time - start_time:.2f} seconds")
             
             # Get info about the separated vocals file
             try:
@@ -333,7 +334,7 @@ class AudioPreprocessor:
                 self.log(logging.DEBUG, f"Updated output file path with timestamp: {output_file}")
         
         try:
-            self.log(logging.INFO, f"Processing audio: {input_file}")
+            self.log(logging.INFO, f"Running audio enhancement step")
             
             # Load audio
             self.log(logging.INFO, f"Loading audio file: {input_file}")
@@ -367,9 +368,11 @@ class AudioPreprocessor:
             self._save_debug_file(audio, input_file, "volume")
             self.log(logging.INFO, f"Volume adjustment completed successfully")
             
-            # Export processed audio in WAV format for better quality
+            # Save the final processed audio
+            self.log(logging.DEBUG, f"Saving processed audio to {output_file}")
             audio.export(output_file, format="wav")
-            self.log(logging.INFO, f"Audio processing completed: {output_file}")
+            
+            self.log(logging.INFO, f"Saved enhanced audio to {os.path.basename(output_file)}")
             return True
             
         except Exception as e:
@@ -502,9 +505,9 @@ class AudioPreprocessor:
                     return False
                 
                 # Copy the vocals file to the output location
-                self.log(logging.INFO, f"Copying vocals file to output location...")
+                self.log(logging.DEBUG, f"Copying vocals file to output location...")
                 shutil.copy(vocals_path, output_file)
-                self.log(logging.INFO, f"Vocals extracted and saved to {output_file}")
+                self.log(logging.INFO, f"Saved vocal file to {os.path.basename(output_file)}")
                 return True
                 
         except Exception as e:
