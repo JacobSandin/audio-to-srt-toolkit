@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.045] - 2025-04-23
+
+### Added
+- Added comprehensive tests for config.yaml structure verification
+- Added integration test for model loading with new configuration
+- Created test_model_loading.py script to verify model loading
+
+### Fixed
+- Updated config.yaml to use the new structured model configuration
+- Fixed model loading with proper categorization (diarization, VAD, segmentation)
+- Ensured backward compatibility with old configuration format
+
 ## [0.0.044] - 2025-04-23
 
 ### Added
