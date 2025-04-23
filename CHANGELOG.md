@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.021] - 2025-04-23
+
+### Changed
+- Enhanced Demucs progress reporting to support the latest htdemucs model
+- Added support for tracking progress across multiple models in model bags
+- Improved progress milestone reporting with 10% increments (0%, 10%, 20%, etc.)
+- Fixed issue where Demucs progress was not being displayed with newer models
+
 ## [0.0.020] - 2025-04-23
 
 ### Changed

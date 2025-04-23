@@ -466,13 +466,60 @@ class AudioPreprocessor:
                 # Process output in real-time to provide progress updates
                 last_progress = 0
                 progress_line = ""
+                model_count = 1  # Default to 1 model
+                current_model = 0
                 
+                # Look for progress indicators in the output
                 for line in process.stdout:
                     line = line.strip()
+                    self.log(logging.DEBUG, line)  # Log all output at DEBUG level for troubleshooting
                     
-                    # Handle progress information more cleanly
-                    if "Progress" in line:
-                        # Extract progress percentage if available
+                    # Check if this is a bag of models and update the count
+                    if "bag of" in line and "models" in line:
+                        try:
+                            model_count = int(line.split("bag of")[1].split("models")[0].strip())
+                            self.log(logging.INFO, f"Demucs will process using {model_count} models")
+                        except:
+                            pass
+                    
+                    # Track which model is currently processing
+                    if "Model #" in line:
+                        try:
+                            current_model = int(line.split("Model #")[1].split(":")[0].strip())
+                            self.log(logging.INFO, f"Processing with model {current_model} of {model_count}")
+                        except:
+                            pass
+                    
+                    # Handle progress information for the new htdemucs model
+                    if "|" in line and "%" in line and ("it/s" in line or "s/it" in line):
+                        try:
+                            # New format has progress like: 100%|██████████| 30/30 [00:21<00:00,  1.40it/s]
+                            progress_part = line.split("|")[0].strip()
+                            if "%" in progress_part:
+                                progress = int(progress_part.split("%")[0].strip())
+                                
+                                # Calculate overall progress considering multiple models
+                                if model_count > 1 and current_model > 0:
+                                    overall_progress = int((current_model - 1) * 100 / model_count + progress / model_count)
+                                else:
+                                    overall_progress = progress
+                                
+                                # Only log at significant milestones (0%, 25%, 50%, 75%, 100%)
+                                milestone_reached = False
+                                for milestone in [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]:
+                                    if overall_progress >= milestone and last_progress < milestone:
+                                        milestone_reached = True
+                                        break
+                                
+                                if milestone_reached:
+                                    self.log(logging.INFO, f"Demucs progress: {overall_progress}%")
+                                    last_progress = overall_progress
+                        except Exception as e:
+                            # If we can't parse the progress, just continue
+                            pass
+                    
+                    # Handle the old progress format as well
+                    elif "Progress" in line:
                         try:
                             progress = int(line.split('%')[0].split()[-1])
                             
@@ -480,25 +527,12 @@ class AudioPreprocessor:
                             if progress in [0, 25, 50, 75, 100] and progress > last_progress:
                                 self.log(logging.INFO, f"Demucs progress: {progress}%")
                                 last_progress = progress
-                            
-                            # For DEBUG level, don't log every progress line to avoid clutter
-                            # Just update the progress_line variable
-                            progress_line = f"Demucs processing: {progress}%"
                         except:
-                            # If we can't parse the progress, just log the line at DEBUG level
-                            self.log(logging.DEBUG, f"Demucs output: {line}")
+                            pass
                     
                     # Log important status messages at INFO level
                     elif any(keyword in line for keyword in ["Separated", "Saving", "Done", "Model", "Using", "Loading"]):
                         self.log(logging.INFO, line)
-                    
-                    # Log errors at WARNING level
-                    elif any(keyword in line.lower() for keyword in ["error", "warning", "fail", "exception"]):
-                        self.log(logging.WARNING, line)
-                    
-                    # Skip logging other progress-related output to reduce clutter
-                    elif any(keyword in line for keyword in ["|█", "Processing", "Batch", "seconds/s"]):
-                        continue
                     
                     # Log everything else at DEBUG level
                     else:
