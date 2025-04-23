@@ -26,6 +26,9 @@ All notable changes to this project will be documented in this file.
 - Configurable bit depth (16/24/32-bit) and sample rate (44.1/48/96kHz)
 - Speaker diarization feature optimized for Swedish dialects
 - Command-line arguments for diarization parameters (--diarize, --min-speakers, --max-speakers, --clustering-threshold)
+- SRT subtitle file generation from diarization results
+- Command-line arguments for SRT generation (--generate-srt, --include-timestamps, --speaker-format, --max-gap, --max-duration)
+- Segment merging functionality to combine consecutive segments from the same speaker
 
 ### Changed
 - Changed output format from MP3 to WAV to maintain high audio quality throughout the processing pipeline

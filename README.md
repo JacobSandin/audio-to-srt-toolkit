@@ -71,23 +71,55 @@ The `audio_toolkit.py` script provides a unified command-line interface for all 
 # With speaker diarization optimized for Swedish dialects
 ./audio_toolkit.py --input-audio your_audio_file.mp3 --diarize --min-speakers 2 --max-speakers 4 --clustering-threshold 0.65
 
+# Generate SRT subtitle file from diarization results
+./audio_toolkit.py --input-audio your_audio_file.mp3 --diarize --generate-srt
+
+# Generate SRT with custom speaker format and timestamps
+./audio_toolkit.py --input-audio your_audio_file.mp3 --diarize --generate-srt --speaker-format "Person {speaker_id}:" --include-timestamps
+
+# Merge consecutive segments from the same speaker with custom gap and duration limits
+./audio_toolkit.py --input-audio your_audio_file.mp3 --diarize --generate-srt --max-gap 1.5 --max-duration 15.0
+
 # With debug mode (saves intermediate files for each processing step)
 ./audio_toolkit.py --input-audio your_audio_file.mp3 --debug
 
-# Combined preprocessing and diarization with debug output
-./audio_toolkit.py --input-audio your_audio_file.mp3 --diarize --debug
+# Combined preprocessing, diarization, and SRT generation with debug output
+./audio_toolkit.py --input-audio your_audio_file.mp3 --diarize --generate-srt --debug
 ```
 
 The toolkit performs the following preprocessing steps:
 
-1. Convert input audio to high-quality WAV format (24-bit, 48kHz)
-2. Separate vocals using Demucs
-3. Normalize audio levels
-4. Apply high-pass and low-pass filtering
-5. Apply dynamic range compression
-6. Adjust volume
+1. **Convert to WAV**: Converts input audio to high-quality WAV format (configurable bit depth and sample rate)
+2. **Vocal Separation**: Extracts vocal content from the audio
+3. **Normalization**: Normalizes audio levels
+4. **Filtering**: Applies high-pass and low-pass filters
+5. **Compression**: Applies dynamic range compression
+6. **Volume Adjustment**: Adjusts the final volume
 
 All processing maintains the high-quality WAV format throughout the pipeline to preserve audio quality for dialect analysis.
+
+For diarization, the toolkit uses the following approach:
+
+1. **Voice Activity Detection (VAD)**: Identifies segments containing speech
+2. **Speaker Diarization**: Identifies different speakers in the audio
+3. **Optimization for Swedish Dialects**: Uses higher speaker counts and specialized parameters
+
+## SRT Generation
+
+The toolkit can generate SRT subtitle files from diarization results with the following features:
+
+1. **Speaker Labeling**: Each segment is labeled with a speaker identifier (e.g., "SPEAKER_01")
+2. **Timestamp Formatting**: Converts start and end times to SRT timestamp format (HH:MM:SS,mmm)
+3. **Segment Merging**: Combines consecutive segments from the same speaker within a configurable gap
+4. **Custom Formatting**: Allows customization of speaker labels and optional inclusion of timestamps
+
+### SRT Generation Parameters
+
+- `--generate-srt`: Enable SRT generation (requires diarization to be enabled)
+- `--include-timestamps`: Include timestamps in the subtitle text (default: False)
+- `--speaker-format`: Format string for speaker labels (default: "{speaker}:")
+- `--max-gap`: Maximum gap in seconds between segments to merge (default: 1.0)
+- `--max-duration`: Maximum duration in seconds for merged segments (default: 10.0)
 
 ### Debug Mode
 

@@ -14,6 +14,7 @@ from pyannote.audio import Pipeline
 from pyannote.audio.pipelines.utils.hook import ProgressHook
 import datetime
 import matplotlib.pyplot as plt
+import json
 
 # Filter out specific warnings from torchaudio and other libraries
 warnings.filterwarnings("ignore", message="torchaudio._backend.*has been deprecated")
@@ -364,8 +365,77 @@ class SpeakerDiarizer:
             
             self.log(logging.INFO, f"Diarization summary saved to {summary_file}")
             
+            # Initialize diarization segments if not already done
+            if not hasattr(self, 'diarization_segments'):
+                self.diarization_segments = []
+                
+                # Try to extract segments from the best result
+                if 'best_result' in locals() and best_result and 'diarization' in best_result:
+                    diarization = best_result['diarization']
+                    for turn, _, speaker in diarization.itertracks(yield_label=True):
+                        segment = {
+                            "start": turn.start,
+                            "end": turn.end,
+                            "speaker": f"SPEAKER_{speaker.split('_')[-1].zfill(2)}",
+                            "text": ""
+                        }
+                        self.diarization_segments.append(segment)
+                elif hasattr(self, 'diarization_result') and self.diarization_result:
+                    # Extract from the main diarization result if available
+                    for turn, _, speaker in self.diarization_result.itertracks(yield_label=True):
+                        segment = {
+                            "start": turn.start,
+                            "end": turn.end,
+                            "speaker": f"SPEAKER_{speaker.split('_')[-1].zfill(2)}",
+                            "text": ""
+                        }
+                        self.diarization_segments.append(segment)
+            
             return True
             
         except Exception as e:
             self.log(logging.ERROR, f"Error during diarization: {str(e)}")
+            return False
+    
+    def get_diarization_result(self):
+        """
+        Get the diarization result in a format suitable for SRT generation.
+        
+        Returns:
+            list: List of diarization segments with start, end, speaker, and text fields
+        """
+        if hasattr(self, 'diarization_segments') and self.diarization_segments:
+            return self.diarization_segments
+        else:
+            self.log(logging.WARNING, "No diarization segments available")
+            return []
+    
+    def save_diarization_result(self, output_file):
+        """
+        Save the diarization result to a JSON file.
+        
+        Args:
+            output_file: Path to output JSON file
+            
+        Returns:
+            bool: True if saving was successful, False otherwise
+        """
+        try:
+            if not hasattr(self, 'diarization_segments') or not self.diarization_segments:
+                self.log(logging.WARNING, "No diarization segments to save")
+                return False
+                
+            # Create output directory if it doesn't exist
+            output_dir = os.path.dirname(output_file)
+            os.makedirs(output_dir, exist_ok=True)
+            
+            # Save segments to JSON file
+            with open(output_file, 'w', encoding='utf-8') as f:
+                json.dump(self.diarization_segments, f, indent=2)
+                
+            self.log(logging.INFO, f"Saved {len(self.diarization_segments)} diarization segments to {output_file}")
+            return True
+            
+        except Exception as e:
+            self.log(logging.ERROR, f"Error saving diarization result: {str(e)}")
             return False

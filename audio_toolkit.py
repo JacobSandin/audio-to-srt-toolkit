@@ -151,6 +151,40 @@ def parse_args():
         help='Clustering threshold for speaker separation (default: 0.65)'
     )
     
+    # SRT generation parameters
+    parser.add_argument(
+        '--generate-srt',
+        action='store_true',
+        help='Generate SRT subtitle file from diarization results'
+    )
+    
+    parser.add_argument(
+        '--include-timestamps',
+        action='store_true',
+        help='Include timestamps in the SRT subtitle text'
+    )
+    
+    parser.add_argument(
+        '--speaker-format',
+        type=str,
+        default="{speaker}:",
+        help='Format string for speaker labels in SRT file (default: "{speaker}:"'
+    )
+    
+    parser.add_argument(
+        '--max-gap',
+        type=float,
+        default=1.0,
+        help='Maximum gap in seconds between segments to merge (default: 1.0)'
+    )
+    
+    parser.add_argument(
+        '--max-duration',
+        type=float,
+        default=10.0,
+        help='Maximum duration in seconds for a merged segment (default: 10.0)'
+    )
+    
     # WAV conversion parameters
     parser.add_argument(
         '--bit-depth',
@@ -303,12 +337,58 @@ def process_audio(args):
         diarizer = SpeakerDiarizer(diarization_config)
         
         # Run diarization
-        diarization_result = diarizer.diarize(input_file, output_dir)
-        if not diarization_result:
+        diarization_segments = diarizer.diarize(input_file, output_dir)
+        if not diarization_segments:
             log(logging.ERROR, "Diarization failed")
             return False
         
         log(logging.INFO, "Speaker diarization completed successfully")
+        
+        # Generate SRT file if requested
+        if args.generate_srt:
+            log(logging.INFO, "Generating SRT subtitle file")
+            
+            # Import SRT generator
+            from src.audio_processing.srt_generator import SRTGenerator
+            
+            # Configure SRT generator
+            srt_config = {
+                'debug': args.debug,
+                'debug_dir': debug_dir if args.debug else None
+            }
+            
+            srt_generator = SRTGenerator(srt_config)
+            
+            # Get diarization results from the diarizer
+            diarization_result = diarizer.get_diarization_result()
+            
+            if not diarization_result:
+                log(logging.WARNING, "No diarization results available for SRT generation")
+            else:
+                # Merge segments if needed
+                if args.max_gap > 0 or args.max_duration > 0:
+                    log(logging.INFO, f"Merging segments (max_gap={args.max_gap}s, max_duration={args.max_duration}s)")
+                    diarization_result = srt_generator.merge_segments(
+                        diarization_result,
+                        max_gap=args.max_gap,
+                        max_duration=args.max_duration
+                    )
+                
+                # Generate SRT file
+                base_name = os.path.splitext(os.path.basename(input_file))[0]
+                srt_file = os.path.join(output_dir, f"{base_name}.srt")
+                
+                srt_result = srt_generator.generate_srt(
+                    diarization_result,
+                    srt_file,
+                    speaker_format=args.speaker_format,
+                    include_timestamps=args.include_timestamps
+                )
+                
+                if srt_result:
+                    log(logging.INFO, f"SRT file generated successfully: {srt_file}")
+                else:
+                    log(logging.ERROR, "Failed to generate SRT file")
     
     return True
 
