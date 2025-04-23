@@ -1,0 +1,42 @@
+# Audio files
+*.mp3
+*.mp4
+*.wav
+*.ogg
+*.flac
+*.m4a
+*.aac
+
+# Segment and transcript files (may contain personal information)
+*.segments
+*.srt
+*.vtt
+*.txt
+*.json
+
+# Model cache and checkpoints
+cache/
+pretrained_models/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS specific files
+.DS_Store
+Thumbs.db

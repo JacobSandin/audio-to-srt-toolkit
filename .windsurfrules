@@ -1,0 +1,130 @@
+# This project: Project Description
+- framework: python
+- build_command: pip install -r requirements.txt
+
+# This project: Audio Processing Configuration
+- huggingface_token: Use environment variable HF_TOKEN for authentication
+- models:
+  - pyannote/speaker-diarization-3.1
+  - tensorlake/speaker-diarization-3.1
+  - pyannote/segmentation-3.0
+  - pyannote/voice-activity-detection
+
+# This project: Audio Processing Rules
+- Use multi-stage approach with separate models for VAD and diarization
+- Try multiple speaker counts (2, 3, 4) to find optimal configuration
+- Use GPU acceleration when available
+- Set min_speakers=2 and max_speakers=4 for Swedish dialect separation
+- Set clustering_threshold=0.65 for better speaker separation
+- Save separate segment files for each configuration
+- Use TF32 acceleration on NVIDIA GPUs
+- Optimize batch size for available GPU memory
+- Filter out background noise using VAD before diarization
+
+# This project: Swedish Dialect Processing
+- Use higher speaker counts (3-4) even for 2-speaker audio to better separate similar dialects
+- Apply high-pass filtering to emphasize dialect differences
+- Optimize for distinguishing between speakers with similar dialects
+- Use segmentation model to detect subtle speaker changes
+
+# Architecture Rules
+- Uses a modular architecture with environment-specific implementations
+- Follows object-oriented design principles
+- Configuration-driven approach to avoid hardcoding
+- Implements a unified logging system
+- Provides command-line interface with standard arguments
+- Use modular design with clear separation of concerns
+- Core functionality should be environment-agnostic
+- Environment-specific code should extend base classes
+- Configuration should be externalized and environment-aware
+- Network operations should be isolated in utility modules
+- Database operations should use parameterized queries
+- Database operations should be isolated in utility modules
+
+# Configuration Management
+- Use YAML for configuration files
+- Support environment-specific configuration files
+- Validate configurations before applying changes
+- Store sensitive information securely (not in code)
+- Support command-line overrides for configuration values
+
+# On startup
+- Test if https://github.com/JacobSandin/configs/blob/master/windsurf/windsurfrules exists
+- If it does, compare to local .windsurfrules in project, except headers "This project:"
+- If it has changed, then ask user if they want to update .windsurfrules
+
+# Use of comments
+- Prepend functions with comments
+- Prepend classes with comments
+- Prepend modules with comments
+- Use comments to explain the logic of the code
+- Write timestamp together with -JS at end of comment for when it was added
+
+# Incorporate logging
+- log through one function log((self, level, *messages, **kwargs))
+- log INFO level to console unless --quiet or --debug is specified
+- Use logging framework
+- Each logfile should be with name-YYYYMMDD-HHMMSS.log
+- DEBUG: Detailed information, typically useful for debugging purposes.
+- INFO: General information about the execution of the application.
+- WARNING: An indication that something unexpected or potentially problematic has occurred, but the application can still continue running.
+- ERROR: An error has occurred that might prevent the application from continuing to execute.
+- CRITICAL: A critical error has occurred that will likely cause the application to terminate.
+
+# Communication in chat
+- Please write precise and short messages
+- Preferably show code rather than describing the code in text
+
+# Testing Requirements
+- Use pytest for testing
+- unittest (Python's built-in testing framework)
+- unittest.mock (Python's built-in mocking library)
+- Follow test-driven development (TDD) practices
+- Create failing tests before implementing features
+- Do not create tests that require sudo to run, try to find a way around it.
+- Ensure all tests pass with run_tests.py before considering a feature complete
+- Use a data-driven approach for organization subnet discovery instead of hardcoding values
+- Static files are also considered hardcoded and should be considerd a last resort
+- Make sure you are not editing tests to pass unless they have an verified error.
+- The base code should pass the tests not the tests pass the base code.
+- Do not hardcode values
+
+# Use of version control
+- Use git for version control
+- Try to commit after every change
+- Make sure all tests pass before committing
+- Clean out temporary files you created
+- Clean out files that are no longer needed
+- Use meaningful commit messages
+- Push changes to remote repository
+
+# Documentation
+- Always maintain README.md
+- Always update CHANGELOG.md
+- Both README.md and CHANGELOG.md should be updated before every commit
+
+# Command Line Behavior
+- Provide clear error messages when invalid arguments are provided
+- Use argparse for command line arguments
+- Use --quiet and --debug parameters
+
+# CHANGELOG Structure
+- Use version numbers in descending order (newest first)
+- Format versions as [x.y.zzz] with dates for released versions (Example: [0.1.000] - 2025-04-23)
+- Only increment zzz (last number) when making changes
+- x and y are incremented when user asks you too
+- Use [0.0.000] - Former Unreleased for features not yet in a release
+- Place unreleased changes at the bottom of the file
+- Group changes under headings: Added, Changed, Fixed, Removed
+- Each entry should be a single line starting with a hyphen
+- Increment version numbers according to semantic versioning principles
+- Use Markdown formatting for consistency
+
+# Pre-commit checklist
+- All project-specific sections have "This project:" prefix
+- Version format in CHANGELOG.md is [x.y.zzz] (three digits after second dot)
+- README.md is up to date
+- CHANGELOG.md is up to date with latest changes
+- All tests pass
+- No temporary files remain
+- Commit message is meaningful and descriptive
