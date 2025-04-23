@@ -180,10 +180,13 @@ class AudioPreprocessor:
         try:
             # Step 1: Convert to high-quality WAV
             if not self.convert_to_wav(input_file, wav_file, 
-                                      bit_depth=self.config.get('bit_depth', 24),
-                                      sample_rate=self.config.get('sample_rate', 48000)):
+                                       bit_depth=self.config.get('bit_depth', 24),
+                                       sample_rate=self.config.get('sample_rate', 48000)):
                 self.log(logging.ERROR, "WAV conversion failed")
                 return False
+            
+            # Important: Use the converted WAV file for further processing, not the original input
+            self.log(logging.INFO, f"Using converted WAV file for further processing: {wav_file}")
             
             # Step 2: Separate vocals using demucs
             if not self.separate_vocals(wav_file, vocals_file):
@@ -455,7 +458,7 @@ class AudioPreprocessor:
             bool: True if demucs ran successfully, False otherwise
         """
         try:
-            self.log(logging.INFO, "Initializing Demucs for vocal separation")
+            self.log(logging.INFO, f"Initializing Demucs for vocal separation on file: {input_file}")
             
             # Get input file info for better progress reporting
             try:

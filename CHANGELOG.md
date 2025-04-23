@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.048] - 2025-04-23
+
+### Fixed
+- Fixed audio processing workflow to correctly use the converted WAV file for Demucs vocal separation
+- Added clearer logging to show which file is being processed at each step
+- Ensured proper file handling throughout the preprocessing pipeline
+
 ## [0.0.047] - 2025-04-23
 
 ### Fixed
