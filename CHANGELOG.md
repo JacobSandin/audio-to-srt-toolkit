@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.046] - 2025-04-23
+
+### Fixed
+- Fixed `--debug-files-only` flag to only create debug files without affecting console output
+- Clarified help text for `--debug-files-only` flag
+- Restored normal terminal logging when using `--debug-files-only`
+- Ensured debug files are created in output_dir/debug/ with `--debug-files-only`
+
 ## [0.0.045] - 2025-04-23
 
 ### Added

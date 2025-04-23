@@ -3,7 +3,7 @@
 # Handles audio preprocessing, diarization, and SRT creation
 # 2025-04-23 -JS
 
-__version__ = "0.0.045"  # Version should match CHANGELOG.md
+__version__ = "0.0.046"  # Version should match CHANGELOG.md
 
 import os
 import sys
@@ -100,8 +100,8 @@ def setup_logging(args):
     file_handler.addFilter(ProgressBarFilter())  # Add filter to suppress progress bars
     
     # Create console handler
-    if args.quiet or args.debug_files_only:
-        # No console output if quiet or debug-files-only
+    if args.quiet:
+        # No console output if quiet
         console_handler = logging.NullHandler()
     else:
         # Normal console output
@@ -277,7 +277,7 @@ def parse_args():
     parser.add_argument(
         '--debug-files-only',
         action='store_true',
-        help='Enable debug logging to files only (no console debug output)'
+        help='Create debug files in output_dir/debug/ without enabling full debug mode'
     )
     
     parser.add_argument(
@@ -421,16 +421,16 @@ def process_audio(args):
     output_basename = os.path.splitext(os.path.basename(input_file))[0] + "_processed.wav"
     output_file = os.path.join(run_dir, output_basename)
     
-    # Create debug directory if debug mode is enabled
+    # Create debug directory if debug mode or debug-files-only is enabled
     debug_dir = None
-    if args.debug:
+    if args.debug or args.debug_files_only:
         debug_dir = os.path.join(run_dir, 'debug')
         os.makedirs(debug_dir, exist_ok=True)
-        log(logging.INFO, f"Debug mode enabled, intermediate files will be saved to {debug_dir}")
+        log(logging.INFO, f"Debug files will be saved to {debug_dir}")
     
     # Configure audio preprocessor
     config = {
-        'debug': args.debug,
+        'debug': args.debug or args.debug_files_only,
         'debug_dir': debug_dir,
         # WAV conversion parameters
         'bit_depth': args.bit_depth,
@@ -487,8 +487,8 @@ def process_audio(args):
         
         # Configure diarizer
         diarization_config = {
-            'debug': args.debug,
-            'debug_dir': debug_dir if args.debug else None,
+            'debug': args.debug or args.debug_files_only,
+            'debug_dir': debug_dir if (args.debug or args.debug_files_only) else None,
             'min_speakers': args.min_speakers,
             'max_speakers': args.max_speakers,
             'clustering_threshold': args.clustering_threshold,
