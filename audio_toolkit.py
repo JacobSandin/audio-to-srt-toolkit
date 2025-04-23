@@ -3,7 +3,7 @@
 # Handles audio preprocessing, diarization, and SRT creation
 # 2025-04-23 -JS
 
-__version__ = "0.0.049"  # Version should match CHANGELOG.md
+__version__ = "0.0.050"  # Version should match CHANGELOG.md
 
 import os
 import sys
@@ -130,7 +130,7 @@ def setup_logging(args):
         handlers=[file_handler, console_handler]
     )
     
-    log(logging.INFO, f"Logging initialized. Log file: {log_file}")
+    log(logging.DEBUG, f"Logging initialized. Log file: {log_file}")
 
 
 def parse_args():

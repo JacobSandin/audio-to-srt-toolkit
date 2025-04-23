@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.050] - 2025-04-23
+
+### Fixed
+- Ensured "Starting Audio Toolkit" is the first visible console message
+- Moved "Logging initialized" message to DEBUG level
+
 ## [0.0.049] - 2025-04-23
 
 ### Fixed
