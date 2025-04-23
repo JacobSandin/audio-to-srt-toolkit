@@ -3,7 +3,7 @@
 # 2025-04-23 -JS
 #
 # Usage: ./test_highpass_cutoffs.py --input your_audio_file.mp3 --include-original --debug
-#        ./test_highpass_cutoffs.py --input your_audio_file.mp3 --cutoffs 200 300 400 500
+#        ./test_highpass_cutoffs.py --input your_audio_file.mp3 --highpass-values 3000 3500 4000 4500
 
 import os
 import sys
@@ -50,11 +50,11 @@ def parse_args():
     )
     
     parser.add_argument(
-        '--cutoffs',
+        '--highpass-values',
         type=int,
         nargs='+',
-        default=[500, 1000,1500, 2000,2500,3000,3500,4000,4500,5000],
-        help='List of highpass cutoff frequencies to test (default: 150 250 350 450)'
+        default=[500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000],
+        help='List of highpass cutoff frequencies to test (default: 500-5000Hz range)'
     )
     
     parser.add_argument(
@@ -109,7 +109,7 @@ def main():
         logger.info(f"Created debug directory: {debug_dir}")
     
     # Process the audio with different highpass cutoff frequencies
-    logger.info(f"Testing highpass cutoff frequencies: {args.cutoffs}")
+    logger.info(f"Testing highpass cutoff frequencies: {args.highpass_values}")
     
     # If requested, copy the original file for comparison
     if args.include_original:
@@ -123,7 +123,7 @@ def main():
         except Exception as e:
             logger.error(f"Error copying original file: {str(e)}")
     
-    for cutoff in args.cutoffs:
+    for cutoff in args.highpass_values:
         logger.info(f"Processing with highpass cutoff: {cutoff}Hz")
         
         # Create output file path for this cutoff
@@ -168,7 +168,7 @@ def main():
     # Print summary of results
     logger.info("=" * 60)
     logger.info(f"Processing complete! All test files are in: {test_run_dir}")
-    logger.info(f"Tested highpass cutoffs: {args.cutoffs}")
+    logger.info(f"Tested highpass cutoffs: {args.highpass_values}")
     logger.info(f"Input file: {args.input}")
     logger.info(f"To compare results, listen to the output files in: {test_run_dir}")
     logger.info("=" * 60)
