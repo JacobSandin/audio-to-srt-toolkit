@@ -30,6 +30,30 @@ The project contains the following key components:
 
 ## Requirements
 
+### FFmpeg Libraries
+This toolkit relies on FFmpeg for audio processing. You must have the correct FFmpeg libraries installed on your system:
+
+```bash
+# For Ubuntu/Debian
+sudo apt-get update
+sudo apt-get install ffmpeg libavutil-dev libavcodec-dev libavformat-dev libavfilter-dev libswscale-dev libswresample-dev
+
+# For Fedora/RHEL/CentOS
+sudo dnf install ffmpeg ffmpeg-devel
+
+# For macOS (using Homebrew)
+brew install ffmpeg
+```
+
+If you encounter errors like `libavutil.so.58: cannot open shared object file`, it means the required FFmpeg libraries are missing.
+
+### Python Dependencies
+Install Python dependencies using:
+
+```bash
+pip install -r requirements.txt
+```
+
 - Python 3.8+
 - PyTorch 2.0+
 - CUDA-compatible GPU (recommended)

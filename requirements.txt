@@ -1,21 +1,33 @@
-# Audio Toolkit Dependencies
+# Audio-to-SRT Toolkit Requirements
+# 2025-04-23 -JS
 
 # Core dependencies
-numpy>=1.20.0
-scipy>=1.7.0
+numpy>=1.24.0
 pydub>=0.25.1
-demucs>=4.0.0
+matplotlib>=3.7.0
 torch>=2.0.0
 torchaudio>=2.0.0
-pyannote.audio>=3.1.1
-pytest>=7.0.0
-pyyaml>=6.0
+pyannote.audio>=3.1.0
+demucs>=4.0.0
+torio>=0.3.0
+
+# FFmpeg dependencies
+# Note: These require system packages to be installed:
+# sudo apt-get install ffmpeg libavutil-dev libavcodec-dev libavformat-dev libavfilter-dev libswscale-dev libswresample-dev
 
 # Audio processing
 librosa>=0.9.0
 noisereduce>=2.0.0
-soundfile>=0.10.0
+soundfile>=0.12.1
+scipy>=1.7.0
 
-# Utilities
-tqdm>=4.62.0
-matplotlib>=3.5.0
+# Hugging Face dependencies
+transformers>=4.30.0
+datasets>=2.12.0
+
+# Utility dependencies
+tqdm>=4.65.0
+PyYAML>=6.0
+
+# Testing
+pytest>=7.0.0

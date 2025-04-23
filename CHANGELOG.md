@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.024] - 2025-04-23
+
+### Added
+- Added dependency checking for FFmpeg libraries at startup
+- Added detailed installation instructions for FFmpeg dependencies in README.md
+- Updated requirements.txt with specific versions and system dependency notes
+- Implemented helpful error messages for missing dependencies
+
 ## [0.0.023] - 2025-04-23
 
 ### Fixed

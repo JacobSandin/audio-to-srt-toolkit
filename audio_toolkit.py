@@ -390,6 +390,47 @@ def process_audio(args):
     return True
 
 
+def check_dependencies():
+    """
+    Check that all required dependencies are installed.
+    Provides helpful error messages if dependencies are missing.
+    
+    Returns:
+        bool: True if all dependencies are available, False otherwise
+    """
+    missing_deps = []
+    
+    # Check for FFmpeg
+    try:
+        # Try to import torio which requires FFmpeg
+        import torio
+        log(logging.DEBUG, "Successfully imported torio")
+    except ImportError as e:
+        log(logging.ERROR, f"Failed to import torio: {str(e)}")
+        missing_deps.append("torio")
+    
+    # Check for FFmpeg libraries specifically
+    try:
+        import ctypes
+        try:
+            # Try to load the FFmpeg libraries directly
+            ctypes.CDLL("libavutil.so.58")
+            ctypes.CDLL("libavcodec.so.60")
+            log(logging.DEBUG, "FFmpeg libraries found")
+        except OSError:
+            log(logging.ERROR, "Missing FFmpeg libraries. Please install them with:")
+            log(logging.ERROR, "sudo apt-get install ffmpeg libavutil-dev libavcodec-dev libavformat-dev")
+            missing_deps.append("ffmpeg-libs")
+    except ImportError:
+        log(logging.WARNING, "Could not check for FFmpeg libraries (ctypes not available)")
+    
+    if missing_deps:
+        log(logging.ERROR, f"Missing dependencies: {', '.join(missing_deps)}")
+        log(logging.ERROR, "Please install the missing dependencies and try again")
+        return False
+    
+    return True
+
 def main():
     """
     Main entry point for the audio toolkit.
@@ -400,9 +441,14 @@ def main():
     # Set up logging
     setup_logging(args)
     
+    log(logging.INFO, "Starting Audio Toolkit")
+    
+    # Check dependencies before proceeding
+    if not check_dependencies():
+        log(logging.ERROR, "Dependency check failed. Please install the missing dependencies.")
+        sys.exit(1)
+    
     try:
-        log(logging.INFO, "Starting Audio Toolkit")
-        
         # Process audio
         if process_audio(args):
             log(logging.INFO, "Audio processing completed successfully")
