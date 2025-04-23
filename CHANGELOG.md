@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.020] - 2025-04-23
+
+### Changed
+- Added progress reporting to audio compression process with 10% milestone updates
+- Implemented custom compression algorithm with detailed progress logging
+- Fixed issue where compression step had no progress feedback during long processing
+
 ## [0.0.019] - 2025-04-23
 
 ### Changed

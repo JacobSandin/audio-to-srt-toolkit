@@ -584,7 +584,7 @@ class AudioPreprocessor:
     
     def _apply_compression(self, audio):
         """
-        Apply dynamic range compression.
+        Apply dynamic range compression with progress reporting.
         
         Args:
             audio: AudioSegment to compress
@@ -592,10 +592,70 @@ class AudioPreprocessor:
         Returns:
             AudioSegment: Compressed audio
         """
-        return effects.compress_dynamic_range(
-            audio, 
-            threshold=self.compression_threshold,
-            ratio=self.compression_ratio
+        self.log(logging.INFO, f"Starting compression (threshold: {self.compression_threshold}dB, ratio: {self.compression_ratio})...")
+        
+        # Get audio parameters
+        sample_width = audio.sample_width
+        channels = audio.channels
+        frame_rate = audio.frame_rate
+        
+        # Convert to numpy array for processing
+        import numpy as np
+        samples = np.array(audio.get_array_of_samples())
+        
+        # Process in chunks to allow progress reporting
+        chunk_size = len(samples) // 10  # Process in 10 chunks for 10% progress updates
+        if chunk_size == 0:
+            chunk_size = len(samples)
+        
+        result = np.array([], dtype=samples.dtype)
+        
+        # Process each chunk with progress reporting
+        for i in range(0, len(samples), chunk_size):
+            # Calculate progress percentage
+            progress = min(100, int((i / len(samples)) * 100))
+            if progress % 10 == 0:  # Report at 0%, 10%, 20%, etc.
+                self.log(logging.INFO, f"Compression progress: {progress}%")
+            
+            # Get the current chunk
+            chunk = samples[i:i+chunk_size]
+            
+            # Apply compression to this chunk using pydub's algorithm
+            # Convert to float for processing
+            chunk_float = chunk.astype(float) / (1 << (8 * sample_width - 1))
+            
+            # Apply compression
+            threshold = 10 ** (self.compression_threshold / 20.0)
+            compressed = np.empty_like(chunk_float)
+            
+            # Apply compression sample by sample
+            for j in range(len(chunk_float)):
+                sample = chunk_float[j]
+                abs_sample = abs(sample)
+                if abs_sample > threshold:
+                    # Compress only samples above threshold
+                    gain_reduction = abs_sample / threshold
+                    gain_reduction = gain_reduction ** (1/self.compression_ratio - 1)
+                    compressed[j] = sample * gain_reduction
+                else:
+                    compressed[j] = sample
+            
+            # Convert back to original data type
+            compressed = (compressed * (1 << (8 * sample_width - 1))).astype(samples.dtype)
+            
+            # Append to result
+            result = np.append(result, compressed)
+        
+        # Report 100% completion
+        self.log(logging.INFO, "Compression progress: 100%")
+        
+        # Convert back to AudioSegment
+        from pydub import AudioSegment
+        return AudioSegment(
+            data=result.tobytes(),
+            sample_width=sample_width,
+            frame_rate=frame_rate,
+            channels=channels
         )
     
     def _adjust_volume(self, audio, gain_db):
