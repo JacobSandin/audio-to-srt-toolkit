@@ -458,24 +458,32 @@ class WhisperTranscriber:
                     # Calculate segment duration
                     segment_duration = segment['end'] - segment['start']
                     
-                    # Transcribe segment first, then decide whether to keep it
-                    # 2025-04-24 -JS
-                    text = self.transcribe_segment(audio, segment)
-                    
-                    # Skip extremely short segments with no meaningful content based on settings
-                    # 2025-04-24 -JS - Always respect remove_empty_segments and min_segment_duration settings
-                    if (self.min_segment_duration > 0 or self.remove_empty_segments) and segment_duration < 0.15 and (not text or len(text.strip()) < 2):
-                        self.log(logging.DEBUG, f"Skipping very short segment {i+1} (duration: {segment_duration:.2f}s) with no meaningful content")
+                    # First check if the segment meets the minimum duration requirement
+                    # 2025-04-24 -JS - Apply filtering before transcription and padding
+                    if (self.min_segment_duration > 0) and segment_duration < self.min_segment_duration:
+                        self.log(logging.DEBUG, f"Skipping segment {i+1} (duration: {segment_duration:.2f}s) below minimum duration {self.min_segment_duration}s")
                         filtered_count += 1
                         continue
+                    
+                    # Skip extremely short segments that are likely to be meaningless
+                    # 2025-04-24 -JS - This is a separate check from min_segment_duration
+                    if segment_duration < 0.15 and self.remove_empty_segments:
+                        self.log(logging.DEBUG, f"Skipping very short segment {i+1} (duration: {segment_duration:.2f}s) due to --srt-remove-empty")
+                        filtered_count += 1
+                        continue
+                    
+                    # Only transcribe segments that passed the duration checks
+                    # 2025-04-24 -JS
+                    text = self.transcribe_segment(audio, segment)
                     
                     # Update segment with transcribed text
                     segment['text'] = text if text else ""
                     
-                    # Skip completely empty segments after transcription based on settings
-                    # 2025-04-24 -JS - Always respect remove_empty_segments and min_segment_duration settings
-                    if (self.min_segment_duration > 0 or self.remove_empty_segments) and not segment['text'].strip():
-                        self.log(logging.DEBUG, f"Skipping segment {i+1} with empty transcription")
+                    # Skip completely empty segments after transcription if remove_empty_segments is True
+                    # 2025-04-24 -JS - Only check for empty text if remove_empty_segments is enabled
+                    # We've already filtered by min_segment_duration before transcription
+                    if self.remove_empty_segments and not segment['text'].strip() and not self.empty_placeholder:
+                        self.log(logging.DEBUG, f"Skipping segment {i+1} with empty transcription due to --srt-remove-empty")
                         filtered_count += 1
                         continue
                     

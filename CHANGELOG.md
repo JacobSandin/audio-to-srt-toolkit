@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.061] - 2025-04-24
+
+### Changed
+- Changed padding application order: now applies --srt-pre and --srt-post padding after minimum duration check
+- Improved filtering efficiency by checking minimum duration before transcription
+- Separated --srt-min-duration and --srt-remove-empty checks for better control
+
 ## [0.0.060] - 2025-04-24
 
 ### Added
