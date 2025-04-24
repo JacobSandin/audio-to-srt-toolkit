@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.068] - 2025-04-24
+
+### Added
+- Added version compatibility layer to handle PyAnnote and PyTorch version differences
+- Implemented smart patching system to adapt older models to newer library versions
+- Added version-aware model loading that applies appropriate compatibility fixes
+
+### Fixed
+- Fixed version mismatch warnings without requiring downgrading libraries
+- Improved handling of "Model was trained with pyannote.audio 0.0.1" warnings
+- Enhanced error detection to distinguish between version mismatches and actual errors
+
 ## [0.0.067] - 2025-04-24
 
 ### Fixed
