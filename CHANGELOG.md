@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.076] - 2025-04-24
+
+### Fixed
+- Fixed Demucs GPU acceleration parameters and model selection
+- Changed default Demucs model from htdemucs to mdx_extra_q for better compatibility with longer files
+- Fixed ValueError issue with audio length exceeding model training length
+- Added automatic diffq package dependency check and installation for mdx_extra_q model
+- Implemented dynamic model selection based on available dependencies
+- Fixed model folder path determination for different Demucs models
+- Improved test compatibility with capture_output parameter
+
+### Added
+- Added diffq package to requirements.txt for mdx_extra_q Demucs model support
+- Added detailed FAQ entries about Demucs models and their limitations
+- Added documentation about GPU memory optimization for Demucs
+- Added troubleshooting information for Demucs dependency issues
+
 ## [0.0.075] - 2025-04-24
 
 ### Fixed

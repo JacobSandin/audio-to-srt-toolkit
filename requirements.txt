@@ -20,6 +20,7 @@ librosa>=0.9.0
 noisereduce>=2.0.0
 soundfile>=0.12.1
 scipy>=1.7.0
+diffq>=0.2.4  # Required for mdx_extra_q Demucs model
 
 # Hugging Face dependencies
 transformers>=4.30.0
