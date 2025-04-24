@@ -117,3 +117,15 @@ If you want to use a different Demucs model:
    - `mdx`: Original model
 
 For very long audio files, you may also need to increase the segment size or process the file in smaller chunks.
+
+### Q: Why does Demucs fail with "FATAL: Trying to use DiffQ, but diffq is not installed"?
+
+The `mdx_extra_q` model requires the `diffq` package for quantization. The toolkit will attempt to automatically install this dependency when needed, but if it fails, it will fall back to the `mdx` model which doesn't require `diffq`.
+
+To manually install the `diffq` package:
+
+```bash
+pip install diffq
+```
+
+If you're using a virtual environment or conda, make sure to activate it first before installing the package.
