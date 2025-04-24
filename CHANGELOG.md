@@ -2,6 +2,60 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.075] - 2025-04-24
+
+### Fixed
+- Fixed version compatibility issues with pyannote.audio and torch versions
+- Improved model loading error handling for local and remote models
+- Fixed maximum recursion depth errors in the version compatibility layer
+- Added special handling for segmentation model 'pipeline' structure issues
+- Implemented fallback mechanism for loading models as raw models when pipeline loading fails
+- Improved validation of Hugging Face model IDs to prevent errors with invalid paths
+- Updated tests to properly handle model loading in test environments
+
+### Changed
+- Replaced HiTZ/pyannote-segmentation-3.0-RTVE model with standard PyTorch models for better compatibility
+- Added alternative segmentation model options with fallback mechanism
+- Enhanced HuggingFace token handling with better logging and fallback to environment variables
+- Improved error handling to gracefully continue when models can't be loaded
+- Enhanced GPU utilization with dynamic batch size optimization and memory management
+- Added performance monitoring and logging for audio processing
+- Implemented dynamic batch size adjustment based on file size and available GPU memory
+
+## [0.0.074] - 2025-04-24
+
+### Fixed
+- Fixed volume debug files being created when --volume-gain 0 is specified
+- Ensured consistent behavior for all debug file creation with zero gain
+
+## [0.0.073] - 2025-04-24
+
+### Fixed
+- Fixed debug files being created for skipped steps (--skip-steps option)
+- Prevented unnecessary file creation for highpass, lowpass and other skipped processing steps
+
+## [0.0.072] - 2025-04-24
+
+### Fixed
+- Fixed volume adjustment step running when --volume-gain 0 is specified
+- Added automatic skip of volume processing when gain is set to zero
+
+## [0.0.071] - 2025-04-24
+
+### Fixed
+- Fixed maximum recursion depth error in diarization model loading
+- Fixed large file size discrepancy in debug output files
+- Ensured vocal separation step properly respects output format setting
+- Prevented unnecessary WAV file creation when MP3 format is selected
+
+## [0.0.070] - 2025-04-24
+
+### Added
+- Added output format option to control file formats throughout processing pipeline
+- Implemented support for MP3-only or WAV-only formats via --output-format flag
+- Added format-specific debug file generation based on selected output format
+- Ensured consistent format usage throughout the entire processing pipeline
+
 ## [0.0.069] - 2025-04-24
 
 ### Fixed
