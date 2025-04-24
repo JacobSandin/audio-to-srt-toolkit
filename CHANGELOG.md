@@ -21,6 +21,7 @@ All notable changes to this project will be documented in this file.
 - Enhanced GPU utilization with dynamic batch size optimization and memory management
 - Added performance monitoring and logging for audio processing
 - Implemented dynamic batch size adjustment based on file size and available GPU memory
+- Added GPU acceleration for Demucs vocal separation with automatic resource optimization
 
 ## [0.0.074] - 2025-04-24
 

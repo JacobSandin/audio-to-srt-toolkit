@@ -49,6 +49,13 @@ class AudioPreprocessor:
         if self.skip_filtering:
             if 'highpass' not in self.skip_steps:
                 self.skip_steps.append('highpass')
+                
+        # Output format option (wav or mp3)
+        # 2025-04-24 -JS
+        self.output_format = self.config.get('output_format', 'wav')
+        if self.output_format not in ['wav', 'mp3']:
+            self.log(logging.WARNING, f"Invalid output format '{self.output_format}', defaulting to 'wav'")
+            self.output_format = 'wav'
             if 'lowpass' not in self.skip_steps:
                 self.skip_steps.append('lowpass')
         
@@ -94,22 +101,23 @@ class AudioPreprocessor:
         elif level == logging.WARNING:
             print(f"\033[93mWARNING: {msg}\033[0m")
     
-    def convert_to_wav(self, input_file, output_file, bit_depth=24, sample_rate=48000):
+    def convert_to_wav(self, input_file, output_file, bit_depth=16, sample_rate=44100):
         """
-        Convert input audio to high-quality WAV format with specified bit depth and sample rate.
-        This is the first step in the preprocessing pipeline to ensure consistent quality.
+        Convert audio file to the selected format (WAV or MP3) with specified parameters.
         
         Args:
             input_file: Path to input audio file
-            output_file: Path to output WAV file
-            bit_depth: Bit depth for the WAV file (16, 24, or 32)
+            output_file: Path to output audio file (format determined by output_format setting)
+            bit_depth: Bit depth for the WAV file (16, 24, or 32) - only used for WAV format
             sample_rate: Sample rate in Hz (e.g., 44100, 48000, 96000)
             
         Returns:
             bool: True if conversion was successful, False otherwise
         """
         try:
-            self.log(logging.INFO, f"Creating WAV file from {os.path.basename(input_file)}")
+            # 2025-04-24 -JS - Updated to respect output_format setting
+            format_name = "WAV" if self.output_format == "wav" else "MP3"
+            self.log(logging.INFO, f"Creating {format_name} file from {os.path.basename(input_file)}")
             
             # Load the input audio
             audio = AudioSegment.from_file(input_file)
@@ -122,21 +130,30 @@ class AudioPreprocessor:
             if audio.frame_rate != sample_rate:
                 audio = audio.set_frame_rate(sample_rate)
             
-            # Handle bit depth correctly
-            # For 24-bit audio, we need to use a special approach
-            if bit_depth == 24:
-                # Export with specific parameters for 24-bit
-                audio.export(
-                    output_file, 
-                    format="wav",
-                    parameters=["-acodec", "pcm_s24le", "-ac", "2", "-ar", str(sample_rate)]
-                )
-            else:
-                # For 16-bit and 32-bit, we can use the standard approach
-                sample_width = bit_depth // 8  # Convert bits to bytes
-                if audio.sample_width != sample_width:
-                    audio = audio.set_sample_width(sample_width)
-                audio.export(output_file, format="wav")
+            # Use the configured output format
+            format_to_use = self.output_format
+            
+            # Handle format-specific export options
+            if format_to_use == "wav":
+                # Handle bit depth correctly for WAV format
+                # For 24-bit audio, we need to use a special approach
+                if bit_depth == 24:
+                    # Export with specific parameters for 24-bit
+                    audio.export(
+                        output_file, 
+                        format="wav",
+                        parameters=["-acodec", "pcm_s24le", "-ac", "2", "-ar", str(sample_rate)]
+                    )
+                else:
+                    # For 16-bit and 32-bit, we can use the standard approach
+                    sample_width = bit_depth // 8  # Convert bits to bytes
+                    if audio.sample_width != sample_width:
+                        audio = audio.set_sample_width(sample_width)
+                    audio.export(output_file, format="wav")
+            else:  # MP3 format
+                # For MP3, we don't need to worry about bit depth
+                # but we should set a good bitrate for quality
+                audio.export(output_file, format="mp3", bitrate="192k")
             
             # Verify the output file has the correct properties
             converted_audio = AudioSegment.from_file(output_file)
@@ -144,13 +161,19 @@ class AudioPreprocessor:
                                     f"{converted_audio.frame_rate}Hz, {converted_audio.sample_width * 8}-bit")
             
             # Save debug file if debug mode is enabled
-            self._save_debug_file(converted_audio, input_file, "wav_conversion")
+            # 2025-04-24 -JS - Updated debug step name to match the actual format
+            debug_step = "wav_conversion" if self.output_format == "wav" else "mp3_conversion"
+            self._save_debug_file(converted_audio, input_file, debug_step)
             
-            self.log(logging.INFO, f"WAV file created and saved to {os.path.basename(output_file)}")
+            # 2025-04-24 -JS - Updated to respect output_format setting
+            format_name = "WAV" if self.output_format == "wav" else "MP3"
+            self.log(logging.INFO, f"{format_name} file created and saved to {os.path.basename(output_file)}")
             return True
             
         except Exception as e:
-            self.log(logging.ERROR, f"Error converting to WAV: {str(e)}")
+            # 2025-04-24 -JS - Updated to respect output_format setting
+            format_name = "WAV" if self.output_format == "wav" else "MP3"
+            self.log(logging.ERROR, f"Error converting to {format_name}: {str(e)}")
             return False
     
     def preprocess(self, input_file, output_file):
@@ -181,32 +204,41 @@ class AudioPreprocessor:
             timestamped_name = base_name
         
         # Determine paths for intermediate files
+        # 2025-04-24 -JS - Updated to respect output_format setting
+        file_ext = ".wav" if self.output_format == "wav" else ".mp3"
+        conversion_step = "wav_conversion" if self.output_format == "wav" else "mp3_conversion"
+        
         if self.debug_mode and self.debug_dir:
             # In debug mode, save intermediate files in debug directory with consistent step-based naming
-            # 2025-04-24 -JS - Updated to use consistent step-based naming without timestamps
-            wav_file = os.path.join(self.debug_dir, f"01_wav_conversion_{base_name}.wav")
-            vocals_file = os.path.join(self.debug_dir, f"02_vocals_{base_name}.wav")
+            # 2025-04-24 -JS - Updated to use consistent step-based naming without timestamps and respect output format
+            converted_file = os.path.join(self.debug_dir, f"01_{conversion_step}_{base_name}{file_ext}")
+            vocals_file = os.path.join(self.debug_dir, f"02_vocals_{base_name}{file_ext}")
         else:
             # In normal mode, use temporary files that will be cleaned up
             temp_dir = tempfile.mkdtemp(prefix="audio_toolkit_")
-            wav_file = os.path.join(temp_dir, f"{timestamped_name}_highquality.wav")
-            vocals_file = os.path.join(temp_dir, f"{timestamped_name}_vocals.wav")
+            converted_file = os.path.join(temp_dir, f"{timestamped_name}_highquality{file_ext}")
+            vocals_file = os.path.join(temp_dir, f"{timestamped_name}_vocals{file_ext}")
         
         try:
-            # Step 1: Convert to high-quality WAV
-            if not self.convert_to_wav(input_file, wav_file, 
+            # Step 1: Convert to high-quality audio in the selected format
+            # 2025-04-24 -JS - Updated to respect output_format setting
+            if not self.convert_to_wav(input_file, converted_file, 
                                        bit_depth=self.config.get('bit_depth', 24),
                                        sample_rate=self.config.get('sample_rate', 48000)):
-                self.log(logging.ERROR, "WAV conversion failed")
+                format_name = "WAV" if self.output_format == "wav" else "MP3"
+                self.log(logging.ERROR, f"{format_name} conversion failed")
                 return False
             
-            # Important: Use the converted WAV file for further processing, not the original input
-            self.log(logging.INFO, f"Using converted WAV file for further processing: {wav_file}")
-            
-            # Step 2: Separate vocals using demucs
-            if not self.separate_vocals(wav_file, vocals_file):
-                self.log(logging.ERROR, "Vocal separation failed")
-                return False
+            # Step 2: Separate vocals if not skipped
+            if 'vocals' in self.skip_steps or self.use_vocals_directly:
+                self.log(logging.INFO, f"Skipping vocal separation as requested")
+                # If using vocals directly, the input file is assumed to be the vocals file
+                vocals_file = input_file
+            else:
+                # 2025-04-24 -JS - Updated to use the correct converted file variable
+                if not self.separate_vocals(converted_file, vocals_file):
+                    self.log(logging.ERROR, "Vocal separation failed")
+                    return False
             
             # Step 3: Process the separated vocals or use them directly
             if self.use_vocals_directly:
@@ -290,7 +322,19 @@ class AudioPreprocessor:
         Returns:
             None
         """
+        # 2025-04-24 -JS - Don't create debug files if debug mode is disabled or debug directory is not set
         if not self.debug_mode or not self.debug_dir:
+            return
+            
+        # 2025-04-24 -JS - Don't create debug files for steps that are being skipped
+        # This prevents unnecessary file creation for skipped processing steps
+        if step_name in self.skip_steps:
+            self.log(logging.DEBUG, f"Skipping debug file creation for {step_name} (step is in skip_steps list)")
+            return
+            
+        # 2025-04-24 -JS - Don't create debug files for volume step when gain is 0
+        if step_name == "volume" and self.default_gain == 0:
+            self.log(logging.DEBUG, f"Skipping debug file creation for volume step (gain is set to 0)")
             return
             
         try:
@@ -304,8 +348,10 @@ class AudioPreprocessor:
             
             # Create debug filename with step name and processing order prefix
             # Use a fixed order prefix to ensure files sort correctly
+            # 2025-04-24 -JS - Added mp3_conversion to step_order
             step_order = {
                 "wav_conversion": "01",
+                "mp3_conversion": "01",  # Same prefix as wav_conversion since they're alternatives
                 "vocals": "02",
                 "highpass": "03",
                 "lowpass": "04",
@@ -317,28 +363,45 @@ class AudioPreprocessor:
             # Get the order prefix or use "99" if step_name is not in the dictionary
             order_prefix = step_order.get(step_name, "99")
             
-            # For wav_conversion step, create a symbolic link instead of duplicating the large file
+            # For conversion step, create a symbolic link instead of duplicating the large file
             # This saves disk space while still providing the debug file for analysis
-            if step_name == "wav_conversion" and os.path.exists(input_file) and input_file.endswith(".wav"):
-                # Create debug filename with order prefix
-                debug_filename = f"{order_prefix}_{step_name}_{base_name}.wav"
-                debug_path = os.path.join(self.debug_dir, debug_filename)
+            # 2025-04-24 -JS - Updated to handle both WAV and MP3 formats
+            if (step_name == "wav_conversion" or step_name == "mp3_conversion") and os.path.exists(input_file):
+                # Determine the correct extension based on the step name
+                ext = ".wav" if step_name == "wav_conversion" else ".mp3"
                 
-                # Create a symbolic link to the original file instead of exporting a new one
-                if os.path.exists(debug_path):
-                    os.remove(debug_path)  # Remove existing link if it exists
-                os.symlink(os.path.abspath(input_file), debug_path)
-                self.log(logging.DEBUG, f"Created symbolic link for {step_name}: {debug_path} -> {input_file}")
+                # Only create a symlink if the input file has the matching extension
+                if input_file.lower().endswith(ext):
+                    # Create debug filename with order prefix
+                    debug_filename = f"{order_prefix}_{step_name}_{base_name}{ext}"
+                    debug_path = os.path.join(self.debug_dir, debug_filename)
+                    
+                    # Create a symbolic link to the original file instead of exporting a new one
+                    if os.path.exists(debug_path):
+                        os.remove(debug_path)  # Remove existing link if it exists
+                    os.symlink(os.path.abspath(input_file), debug_path)
+                    self.log(logging.DEBUG, f"Created symbolic link for {step_name}: {debug_path} -> {input_file}")
+                else:
+                    # If extensions don't match, fall through to the regular export code below
+                    pass
             else:
-                # For all other steps, create a regular debug file
-                debug_filename = f"{order_prefix}_{step_name}_{base_name}.wav"
+                # For all other steps, create a regular debug file with the appropriate format
+                # 2025-04-24 -JS - Updated to respect output_format setting
+                file_format = "wav"
+                if self.output_format == "mp3":
+                    file_format = "mp3"
+                
+                debug_filename = f"{order_prefix}_{step_name}_{base_name}.{file_format}"
                 debug_path = os.path.join(self.debug_dir, debug_filename)
                 
-                # Export debug file in WAV format for better quality
+                # Export debug file in the selected format
                 # Use with statement to ensure file is properly closed
                 with open(debug_path, 'wb') as f:
-                    audio.export(f, format="wav")  # 2025-04-23 - JS
+                    audio.export(f, format=file_format)
                 self.log(logging.DEBUG, f"Saved debug file for {step_name}: {debug_path}")
+                
+                # The 'both' option has been removed as it doesn't make sense in a pipeline context
+                # Each processing step now uses a single consistent format throughout
             
         except Exception as e:
             self.log(logging.WARNING, f"Failed to save debug file for {step_name}: {str(e)}")
@@ -393,7 +456,7 @@ class AudioPreprocessor:
             # Step 1: Highpass filter
             if 'highpass' in self.skip_steps:
                 self.log(logging.INFO, f"Skipping high-pass filter as requested")
-                self._save_debug_file(audio, input_file, "highpass")
+                # 2025-04-24 -JS - Don't create debug files for skipped steps
             else:
                 # Apply highpass filter
                 self.log(logging.INFO, f"Applying high-pass filter (cutoff: {self.highpass_cutoff}Hz)...")
@@ -410,7 +473,7 @@ class AudioPreprocessor:
             # Step 2: Lowpass filter
             if 'lowpass' in self.skip_steps:
                 self.log(logging.INFO, f"Skipping low-pass filter as requested")
-                self._save_debug_file(audio, input_file, "lowpass")
+                # 2025-04-24 -JS - Don't create debug files for skipped steps
             else:
                 # Apply lowpass filter
                 self.log(logging.INFO, f"Applying low-pass filter (cutoff: {self.lowpass_cutoff}Hz)...")
@@ -427,7 +490,7 @@ class AudioPreprocessor:
             # Step 3: Compression
             if 'compression' in self.skip_steps:
                 self.log(logging.INFO, f"Skipping compression as requested")
-                self._save_debug_file(audio, input_file, "compression")
+                # 2025-04-24 -JS - Don't create debug files for skipped steps
             else:
                 self.log(logging.INFO, f"Applying compression (threshold: {self.compression_threshold}dB, ratio: {self.compression_ratio})...")
                 audio = self.apply_compression(audio)
@@ -437,7 +500,7 @@ class AudioPreprocessor:
             # Step 4: Normalization
             if 'normalize' in self.skip_steps:
                 self.log(logging.INFO, f"Skipping normalization as requested")
-                self._save_debug_file(audio, input_file, "normalize")
+                # 2025-04-24 -JS - Don't create debug files for skipped steps
             else:
                 self.log(logging.INFO, f"Normalizing audio levels...")
                 audio = self.normalize(audio)
@@ -445,9 +508,13 @@ class AudioPreprocessor:
                 self.log(logging.INFO, f"Normalization completed successfully")
             
             # Step 5: Volume adjustment
-            if 'volume' in self.skip_steps:
-                self.log(logging.INFO, f"Skipping volume adjustment as requested")
-                self._save_debug_file(audio, input_file, "volume")
+            # 2025-04-24 -JS - Skip volume adjustment when gain is 0
+            if 'volume' in self.skip_steps or self.default_gain == 0:
+                if 'volume' in self.skip_steps:
+                    self.log(logging.INFO, f"Skipping volume adjustment as requested")
+                else:
+                    self.log(logging.INFO, f"Skipping volume adjustment (gain is set to 0)")
+                # 2025-04-24 -JS - Don't create debug files for skipped steps
             else:
                 self.log(logging.INFO, f"Adjusting volume (gain: {self.default_gain:.1f}dB)...")
                 audio = self.adjust_volume(audio, gain_db=self.default_gain)
@@ -456,11 +523,26 @@ class AudioPreprocessor:
             
             # Save the final processed audio
             self.log(logging.DEBUG, f"Saving processed audio to {output_file}")
+            
+            # Determine the output format based on the output_format setting
+            # 2025-04-24 -JS
+            output_ext = os.path.splitext(output_file)[1].lower()
+            
+            # Use the configured output format
+            format_to_use = self.output_format
+            
+            # If the output file extension doesn't match the configured format, adjust the filename
+            if (format_to_use == "mp3" and output_ext != ".mp3") or (format_to_use == "wav" and output_ext != ".wav"):
+                output_base = os.path.splitext(output_file)[0]
+                output_file = f"{output_base}.{format_to_use}"
+                self.log(logging.DEBUG, f"Adjusted output filename to match format: {output_file}")
+            
             # Use with statement to ensure file is properly closed
             with open(output_file, 'wb') as f:
-                audio.export(f, format="wav")
+                audio.export(f, format=format_to_use)
             
             self.log(logging.INFO, f"Saved enhanced audio to {os.path.basename(output_file)}")
+            
             return True
             
         except Exception as e:
@@ -564,13 +646,57 @@ class AudioPreprocessor:
             with tempfile.TemporaryDirectory() as temp_dir:
                 # Run demucs command with verbose output
                 self.log(logging.INFO, "Starting Demucs model - separating vocals from background...")
+                
+                # 2025-04-24 -JS - Enhanced GPU utilization for Demucs
+                # Check if GPU is available
+                use_gpu = False
+                try:
+                    import torch
+                    use_gpu = torch.cuda.is_available()
+                    if use_gpu:
+                        gpu_name = torch.cuda.get_device_name(0)
+                        self.log(logging.INFO, f"Using GPU for Demucs: {gpu_name}")
+                    else:
+                        self.log(logging.INFO, "GPU not available, using CPU for Demucs")
+                except ImportError:
+                    self.log(logging.WARNING, "PyTorch not available, using CPU for Demucs")
+                
                 cmd = [
                     "demucs", 
                     "--two-stems=vocals",
-                    "--verbose", # Enable verbose output
+                    "--verbose" # Enable verbose output
+                ]
+                
+                # Add GPU-specific parameters if GPU is available
+                if use_gpu:
+                    cmd.extend([
+                        "--device", "cuda",  # Use CUDA device
+                        "--shifts", "2"     # Use 2 shifts for better quality with GPU
+                    ])
+                    
+                    # Check available GPU memory and adjust batch size accordingly
+                    try:
+                        gpu_mem = torch.cuda.get_device_properties(0).total_memory / (1024 ** 3)  # in GB
+                        if gpu_mem > 8:  # If more than 8GB VRAM
+                            cmd.extend(["--batch-size", "4"])  # Larger batch size
+                        elif gpu_mem > 4:  # If more than 4GB VRAM
+                            cmd.extend(["--batch-size", "2"])  # Medium batch size
+                        else:  # Limited VRAM
+                            cmd.extend(["--batch-size", "1"])  # Small batch size
+                            
+                        self.log(logging.INFO, f"Set Demucs batch size based on {gpu_mem:.1f}GB GPU memory")
+                    except Exception as e:
+                        self.log(logging.WARNING, f"Could not determine optimal batch size: {str(e)}")
+                        cmd.extend(["--batch-size", "1"])  # Default to safe batch size
+                else:
+                    # For CPU, use a smaller segment size to avoid memory issues
+                    cmd.extend(["--segment", "10"])  # Process in 10-second segments
+                
+                # Add output directory and input file
+                cmd.extend([
                     "-o", temp_dir,
                     input_file
-                ]
+                ])
                 
                 self.log(logging.DEBUG, f"Running command: {' '.join(cmd)}")
                 
@@ -592,10 +718,16 @@ class AudioPreprocessor:
                     self.log(logging.ERROR, f"Demucs output file not found: {vocals_path}")
                     return False
                 
-                # Copy the vocals file to the output location
-                self.log(logging.DEBUG, f"Copying vocals file to output location...")
-                shutil.copy(vocals_path, output_file)
-                self.log(logging.INFO, f"Saved vocal file to {os.path.basename(output_file)}")
+                # 2025-04-24 -JS - Respect the output format setting
+                self.log(logging.DEBUG, f"Processing vocals file to output location...")
+                
+                # Load the vocals file
+                vocals_audio = AudioSegment.from_file(vocals_path)
+                
+                # Export in the correct format based on the output_format setting
+                vocals_audio.export(output_file, format=self.output_format)
+                
+                self.log(logging.INFO, f"Saved vocal file to {os.path.basename(output_file)} in {self.output_format} format")
                 return True
                 
         except Exception as e:
