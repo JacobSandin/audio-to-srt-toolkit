@@ -718,8 +718,7 @@ class AudioPreprocessor:
                     cmd.extend([
                         "--device", "cuda",  # Use CUDA device
                         "--shifts", "2",    # Use 2 shifts for better quality with GPU
-                        "--float",          # Use float32 precision for better GPU utilization
-                        "--workers", "4"    # Use multiple workers for better CPU/GPU parallelization
+                        "--float32"         # Use float32 precision for better GPU utilization
                     ])
                     
                     # Check available GPU memory and adjust segment size accordingly
@@ -740,8 +739,8 @@ class AudioPreprocessor:
                             # For limited memory GPUs, use smaller segments
                             cmd.extend(["--segment", "10"])  # Process in 10-second segments
                             
-                        # Add CUDA optimization flags
-                        cmd.extend(["--cudnn-benchmark"])  # Enable cuDNN benchmark mode for faster processing
+                        # Set number of jobs (threads) for processing
+                        cmd.extend(["-j", "4"])  # Use 4 threads for better CPU/GPU parallelization
                         
                         self.log(logging.INFO, f"Optimized Demucs memory usage based on {gpu_mem:.1f}GB GPU memory")
                     except Exception as e:
