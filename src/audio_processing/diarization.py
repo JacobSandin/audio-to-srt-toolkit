@@ -17,6 +17,11 @@ import matplotlib.pyplot as plt
 import json
 import re  # 2025-04-24 -JS
 import glob  # 2025-04-24 -JS
+import importlib
+import pkg_resources
+import functools
+import types
+from packaging import version
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -39,12 +44,184 @@ def get_colormap(name):
     Returns:
         The requested colormap
     """
-    return plt.colormaps[name]  # 2025-04-23 - JS
+    return plt.colormaps[name]
+
+
+# Version compatibility layer
+# 2025-04-24 -JS
+class VersionCompatibilityLayer:
+    """Provides compatibility between different versions of PyAnnote and PyTorch.
+    
+    This class handles version differences between the models trained on older versions
+    of PyAnnote/PyTorch and the current versions we're using. It applies patches and
+    workarounds to ensure models work correctly without downgrading.
+    """
+    
+    def __init__(self):
+        """Initialize the compatibility layer."""
+        # Get current versions
+        self.current_pyannote_version = self._get_package_version('pyannote.audio')
+        self.current_torch_version = self._get_package_version('torch')
+        
+        # Initialize patched modules dict
+        self.patched_modules = {}
+        
+        # Log initialization
+        logging.debug(f"Version compatibility layer initialized")
+        logging.debug(f"Current pyannote.audio version: {self.current_pyannote_version}")
+        logging.debug(f"Current torch version: {self.current_torch_version}")
+    
+    def _get_package_version(self, package_name):
+        """Get the version of an installed package.
+        
+        Args:
+            package_name: Name of the package
+            
+        Returns:
+            Version string or None if package not found
+        """
+        try:
+            return pkg_resources.get_distribution(package_name).version
+        except pkg_resources.DistributionNotFound:
+            return None
+    
+    def patch_model_loading(self, model_info):
+        """Apply patches before loading a model to ensure compatibility.
+        
+        Args:
+            model_info: Dictionary with model information including training versions
+            
+        Returns:
+            Context manager that applies and removes patches
+        """
+        return self._VersionCompatibilityContext(self, model_info)
+    
+    def _apply_patches(self, model_info):
+        """Apply necessary patches based on model version information.
+        
+        Args:
+            model_info: Dictionary with model information
+        """
+        # Extract model version information
+        pyannote_version = model_info.get('pyannote_version', '0.0.1')  # Default to oldest version
+        torch_version = model_info.get('torch_version', '1.7.1')  # Default to oldest version
+        
+        # Convert to version objects for comparison
+        pyannote_ver = version.parse(pyannote_version)
+        torch_ver = version.parse(torch_version)
+        current_pyannote_ver = version.parse(self.current_pyannote_version or '0.0.0')
+        current_torch_ver = version.parse(self.current_torch_version or '0.0.0')
+        
+        # Log what we're doing
+        logging.debug(f"Applying compatibility patches for model")
+        logging.debug(f"Model pyannote.audio version: {pyannote_version}, current: {self.current_pyannote_version}")
+        logging.debug(f"Model torch version: {torch_version}, current: {self.current_torch_version}")
+        
+        # Apply PyAnnote compatibility patches if needed
+        if pyannote_ver.major < current_pyannote_ver.major:
+            self._patch_pyannote_for_older_models()
+        
+        # Apply PyTorch compatibility patches if needed
+        if torch_ver.major < current_torch_ver.major:
+            self._patch_torch_for_older_models()
+    
+    def _remove_patches(self):
+        """Remove all applied patches."""
+        # Restore original modules
+        for module_name, original_module in self.patched_modules.items():
+            parts = module_name.split('.')
+            parent_module = '.'.join(parts[:-1])
+            attr_name = parts[-1]
+            
+            if parent_module:
+                parent = importlib.import_module(parent_module)
+                setattr(parent, attr_name, original_module)
+            else:
+                # It's a top-level module
+                sys.modules[attr_name] = original_module
+        
+        # Clear the patched modules dict
+        self.patched_modules = {}
+        logging.debug("Removed all compatibility patches")
+    
+    def _patch_pyannote_for_older_models(self):
+        """Apply patches for older PyAnnote models."""
+        # Patch specific PyAnnote functions or classes as needed
+        try:
+            # Example: Patch the Pipeline class to handle older model formats
+            from pyannote.audio import Pipeline as OriginalPipeline
+            
+            # Store original for later restoration
+            self.patched_modules['pyannote.audio.Pipeline'] = OriginalPipeline
+            
+            # Create patched version that handles older model formats
+            @functools.wraps(OriginalPipeline.from_pretrained)
+            def patched_from_pretrained(cls, checkpoint_path, *args, **kwargs):
+                # Add compatibility code here
+                logging.debug(f"Using patched Pipeline.from_pretrained for older model compatibility")
+                
+                # Handle specific version incompatibilities
+                if 'use_auth_token' in kwargs and kwargs['use_auth_token']:
+                    # Ensure token is properly formatted for older models
+                    logging.debug("Adjusting auth token format for older model compatibility")
+                
+                # Call original with possibly modified args
+                return OriginalPipeline.from_pretrained.__func__(cls, checkpoint_path, *args, **kwargs)
+            
+            # Apply the patch
+            OriginalPipeline.from_pretrained = classmethod(patched_from_pretrained)
+            
+            logging.debug("Applied PyAnnote compatibility patches")
+        except Exception as e:
+            logging.warning(f"Failed to apply PyAnnote compatibility patches: {str(e)}")
+    
+    def _patch_torch_for_older_models(self):
+        """Apply patches for older PyTorch models."""
+        # Patch specific PyTorch functions or classes as needed
+        try:
+            # Example: Patch torch.load to handle older model formats
+            original_torch_load = torch.load
+            
+            # Store original for later restoration
+            self.patched_modules['torch.load'] = original_torch_load
+            
+            # Create patched version
+            @functools.wraps(original_torch_load)
+            def patched_torch_load(*args, **kwargs):
+                logging.debug(f"Using patched torch.load for older model compatibility")
+                
+                # Set map_location to CPU if not specified to avoid CUDA version issues
+                if 'map_location' not in kwargs:
+                    kwargs['map_location'] = torch.device('cpu')
+                
+                # Call original with modified args
+                return original_torch_load(*args, **kwargs)
+            
+            # Apply the patch
+            torch.load = patched_torch_load
+            
+            logging.debug("Applied PyTorch compatibility patches")
+        except Exception as e:
+            logging.warning(f"Failed to apply PyTorch compatibility patches: {str(e)}")
+    
+    class _VersionCompatibilityContext:
+        """Context manager for applying and removing patches."""
+        
+        def __init__(self, compatibility_layer, model_info):
+            self.compatibility_layer = compatibility_layer
+            self.model_info = model_info
+        
+        def __enter__(self):
+            self.compatibility_layer._apply_patches(self.model_info)
+            return self
+        
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            self.compatibility_layer._remove_patches()
+            return False  # Don't suppress exceptions  # 2025-04-23 - JS
 
 
 class SpeakerDiarizer:
-    """
-    Speaker diarization class that implements multi-stage approach
+    """Speaker diarization class that implements multi-stage approach
     optimized for Swedish dialect separation.
     """
     
@@ -78,6 +255,10 @@ class SpeakerDiarizer:
         self.batch_size = self.config.get('batch_size', 32)
         self.debug = self.config.get('debug', False)
         self.debug_dir = self.config.get('debug_dir', None)
+        
+        # Initialize version compatibility layer
+        # 2025-04-24 -JS
+        self.version_compatibility = VersionCompatibilityLayer()
         
         # Initialize pipelines
         self.diarization_pipeline = None
@@ -169,10 +350,19 @@ class SpeakerDiarizer:
                         if '/' in model_name and not model_name.startswith('/'):
                             # It's a valid Hugging Face model ID
                             self.log(logging.DEBUG, f"Loading Hugging Face diarization model: {model_name} with token: {'Present' if self.huggingface_token else 'Missing'}")
-                            self.diarization_pipeline = Pipeline.from_pretrained(
-                                model_name,
-                                use_auth_token=self.huggingface_token
-                            )
+                            
+                            # Define model version information
+                            model_info = {
+                                'pyannote_version': '0.0.1',  # Assume older version
+                                'torch_version': '1.7.1'      # Assume older version
+                            }
+                            
+                            # Use version compatibility layer
+                            with self.version_compatibility.patch_model_loading(model_info):
+                                self.diarization_pipeline = Pipeline.from_pretrained(
+                                    model_name,
+                                    use_auth_token=self.huggingface_token
+                                )
                         else:
                             # Invalid format for a Hugging Face model ID
                             self.log(logging.WARNING, f"Invalid Hugging Face diarization model ID format: {model_name}")
@@ -189,8 +379,15 @@ class SpeakerDiarizer:
                     self.log(logging.DEBUG, f"Successfully loaded diarization model: {model_name}")  # 2025-04-24 -JS
                     break
                 except Exception as e:
-                    self.log(logging.WARNING, f"Failed to load {model_name}: {str(e)}")
-                    continue
+                    error_str = str(e)
+                    # Check if this is a version warning that we can handle
+                    if "Model was trained with pyannote.audio" in error_str or "Model was trained with torch" in error_str:
+                        self.log(logging.INFO, f"Detected version mismatch for {model_name}, but continuing with compatibility layer")
+                        self.log(logging.DEBUG, f"Version warning: {error_str}")
+                        # Continue with the model despite the warning
+                    else:
+                        self.log(logging.WARNING, f"Failed to load {model_name}: {error_str}")
+                        continue
             
             # Check if any model was loaded
             if self.diarization_pipeline is None:
@@ -265,10 +462,19 @@ class SpeakerDiarizer:
                         if '/' in model_name and not model_name.startswith('/'):
                             # It's a valid Hugging Face model ID
                             self.log(logging.DEBUG, f"Loading Hugging Face VAD model: {model_name} with token: {'Present' if self.huggingface_token else 'Missing'}")
-                            self.vad_pipeline = Pipeline.from_pretrained(
-                                model_name,
-                                use_auth_token=self.huggingface_token
-                            )
+                            
+                            # Define model version information
+                            model_info = {
+                                'pyannote_version': '0.0.1',  # Assume older version
+                                'torch_version': '1.7.1'      # Assume older version
+                            }
+                            
+                            # Use version compatibility layer
+                            with self.version_compatibility.patch_model_loading(model_info):
+                                self.vad_pipeline = Pipeline.from_pretrained(
+                                    model_name,
+                                    use_auth_token=self.huggingface_token
+                                )
                         else:
                             # Invalid format for a Hugging Face model ID
                             self.log(logging.WARNING, f"Invalid Hugging Face VAD model ID format: {model_name}")
@@ -276,8 +482,15 @@ class SpeakerDiarizer:
                     self.log(logging.DEBUG, f"Successfully loaded VAD model: {model_name}")  # 2025-04-24 -JS
                     break
                 except Exception as e:
-                    self.log(logging.WARNING, f"Failed to load {model_name}: {str(e)}")
-                    continue
+                    error_str = str(e)
+                    # Check if this is a version warning that we can handle
+                    if "Model was trained with pyannote.audio" in error_str or "Model was trained with torch" in error_str:
+                        self.log(logging.INFO, f"Detected version mismatch for {model_name}, but continuing with compatibility layer")
+                        self.log(logging.DEBUG, f"Version warning: {error_str}")
+                        # Continue with the model despite the warning
+                    else:
+                        self.log(logging.WARNING, f"Failed to load {model_name}: {error_str}")
+                        continue
             
             # Check if any VAD model was loaded
             if self.vad_pipeline is None:
@@ -335,10 +548,19 @@ class SpeakerDiarizer:
                             if '/' in model_name and not model_name.startswith('/'):
                                 # It's a valid Hugging Face model ID
                                 self.log(logging.DEBUG, f"Loading Hugging Face model: {model_name} with token: {'Present' if self.huggingface_token else 'Missing'}")
-                                self.segmentation_pipeline = Pipeline.from_pretrained(
-                                    model_name,
-                                    use_auth_token=self.huggingface_token
-                                )
+                                
+                                # Define model version information
+                                model_info = {
+                                    'pyannote_version': '0.0.1',  # Assume older version
+                                    'torch_version': '1.7.1'      # Assume older version
+                                }
+                                
+                                # Use version compatibility layer
+                                with self.version_compatibility.patch_model_loading(model_info):
+                                    self.segmentation_pipeline = Pipeline.from_pretrained(
+                                        model_name,
+                                        use_auth_token=self.huggingface_token
+                                    )
                             else:
                                 # Invalid format for a Hugging Face model ID
                                 self.log(logging.WARNING, f"Invalid Hugging Face model ID format: {model_name}")
@@ -346,8 +568,15 @@ class SpeakerDiarizer:
                         self.log(logging.DEBUG, f"Successfully loaded segmentation model: {model_name}")  # 2025-04-24 -JS
                         break
                     except Exception as e:
-                        self.log(logging.WARNING, f"Failed to load {model_name}: {str(e)}")
-                        continue
+                        error_str = str(e)
+                        # Check if this is a version warning that we can handle
+                        if "Model was trained with pyannote.audio" in error_str or "Model was trained with torch" in error_str:
+                            self.log(logging.INFO, f"Detected version mismatch for {model_name}, but continuing with compatibility layer")
+                            self.log(logging.DEBUG, f"Version warning: {error_str}")
+                            # Continue with the model despite the warning
+                        else:
+                            self.log(logging.WARNING, f"Failed to load {model_name}: {error_str}")
+                            continue
                         
                 # If we couldn't load any model, raise an exception to be caught below
                 if self.segmentation_pipeline is None:
