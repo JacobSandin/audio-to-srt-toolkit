@@ -692,7 +692,7 @@ class AudioPreprocessor:
                     if not has_diffq:
                         self.log(logging.WARNING, "diffq package not installed, attempting to install it")
                         try:
-                            import subprocess
+                            # Use the subprocess module that's already imported at the top of the file
                             subprocess.check_call([sys.executable, "-m", "pip", "install", "diffq"])
                             self.log(logging.INFO, "Successfully installed diffq package")
                         except Exception as e:
