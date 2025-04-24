@@ -261,7 +261,9 @@ class AudioPreprocessor:
             
             # Get info about the separated vocals file
             try:
-                vocals_audio = AudioSegment.from_file(output_file)
+                # Use a context manager to ensure the file is properly closed
+                with open(output_file, 'rb') as f:
+                    vocals_audio = AudioSegment.from_file(f)
                 duration_sec = len(vocals_audio) / 1000
                 self.log(logging.INFO, f"Extracted vocals: {duration_sec:.2f} seconds, {vocals_audio.frame_rate}Hz, {vocals_audio.channels} channels")
                 
@@ -376,7 +378,9 @@ class AudioPreprocessor:
             
             # Load audio
             self.log(logging.INFO, f"Loading audio file: {input_file}")
-            audio = AudioSegment.from_file(input_file)
+            # Use a context manager to ensure the file is properly closed
+            with open(input_file, 'rb') as f:
+                audio = AudioSegment.from_file(f)
             sample_rate = audio.frame_rate
             self.log(logging.INFO, f"Audio loaded: {len(audio)/1000:.2f} seconds, {sample_rate}Hz sample rate")
             

@@ -16,6 +16,7 @@ import datetime
 import matplotlib.pyplot as plt
 import json
 import re  # 2025-04-24 -JS
+import glob  # 2025-04-24 -JS
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -345,6 +346,23 @@ class SpeakerDiarizer:
             bool: True if diarization was successful, False otherwise
         """
         try:
+            # Check if the input file exists
+            if not os.path.exists(input_file):
+                # If the file doesn't exist, try to find it with a timestamp prefix
+                input_basename = os.path.basename(input_file)
+                input_dir = os.path.dirname(input_file)
+                
+                # Look for files with the same base name but with a timestamp prefix
+                possible_files = glob.glob(os.path.join(input_dir, f"*_{input_basename}"))
+                
+                if possible_files:
+                    # Use the first matching file
+                    input_file = possible_files[0]
+                    self.log(logging.INFO, f"Using file with timestamp prefix: {input_file}")
+                else:
+                    self.log(logging.ERROR, f"File {input_file} does not exist")
+                    return False
+            
             self.log(logging.INFO, f"Starting diarization of {input_file}")
             start_time = time.time()
             
