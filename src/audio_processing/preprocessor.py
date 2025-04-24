@@ -674,23 +674,27 @@ class AudioPreprocessor:
                         "--shifts", "2"     # Use 2 shifts for better quality with GPU
                     ])
                     
-                    # Check available GPU memory and adjust batch size accordingly
+                    # Check available GPU memory and adjust segment size accordingly
+                    # Note: Demucs doesn't have a batch-size parameter, but uses segment size for memory control
                     try:
                         gpu_mem = torch.cuda.get_device_properties(0).total_memory / (1024 ** 3)  # in GB
                         if gpu_mem > 8:  # If more than 8GB VRAM
-                            cmd.extend(["--batch-size", "4"])  # Larger batch size
+                            # For high memory GPUs, we can use larger segments or no split
+                            cmd.append("--no-split")  # Process the entire audio at once
                         elif gpu_mem > 4:  # If more than 4GB VRAM
-                            cmd.extend(["--batch-size", "2"])  # Medium batch size
+                            # For medium memory GPUs, use larger segments
+                            cmd.extend(["--segment", "30"])  # Process in 30-second segments
                         else:  # Limited VRAM
-                            cmd.extend(["--batch-size", "1"])  # Small batch size
+                            # For limited memory GPUs, use smaller segments
+                            cmd.extend(["--segment", "10"])  # Process in 10-second segments
                             
-                        self.log(logging.INFO, f"Set Demucs batch size based on {gpu_mem:.1f}GB GPU memory")
+                        self.log(logging.INFO, f"Optimized Demucs memory usage based on {gpu_mem:.1f}GB GPU memory")
                     except Exception as e:
-                        self.log(logging.WARNING, f"Could not determine optimal batch size: {str(e)}")
-                        cmd.extend(["--batch-size", "1"])  # Default to safe batch size
+                        self.log(logging.WARNING, f"Could not determine optimal segment size: {str(e)}")
+                        cmd.extend(["--segment", "10"])  # Default to safe segment size
                 else:
                     # For CPU, use a smaller segment size to avoid memory issues
-                    cmd.extend(["--segment", "10"])  # Process in 10-second segments
+                    cmd.extend(["--segment", "8"])  # Process in 8-second segments
                 
                 # Add output directory and input file
                 cmd.extend([
