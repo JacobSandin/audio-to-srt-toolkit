@@ -3,7 +3,7 @@
 # Handles audio preprocessing, diarization, and SRT creation
 # 2025-04-23 -JS
 
-__version__ = "0.0.067"  # Version should match CHANGELOG.md
+__version__ = "0.0.069"  # Version should match CHANGELOG.md
 
 import os
 import sys

@@ -4,6 +4,6 @@
 
 from .preprocessor import AudioPreprocessor
 
-__version__ = '0.0.067'  # Follow semantic versioning (major.minor.patch) - 2025-04-24 -JS
+__version__ = '0.0.069'  # Follow semantic versioning (major.minor.patch) - 2025-04-24 -JS
 
 __all__ = ['AudioPreprocessor']

@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.069] - 2025-04-24
+
+### Fixed
+- Reverted progress bar formatting changes for demucs to fix subprocess error
+- Fixed "'int' object has no attribute 'returncode'" error in demucs processing
+- Restored original progress bar display to ensure stability
+
 ## [0.0.068] - 2025-04-24
 
 ### Added
