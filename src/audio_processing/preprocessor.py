@@ -574,9 +574,46 @@ class AudioPreprocessor:
                 
                 self.log(logging.DEBUG, f"Running command: {' '.join(cmd)}")
                 
-                # Use subprocess.run directly without capturing output
-                # This allows tqdm to directly control the terminal
-                result = subprocess.run(cmd)
+                # Capture and format the output to remove decimals from progress bar
+                process = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    universal_newlines=True,
+                    bufsize=1
+                )
+                
+                # Process output line by line
+                for line in iter(process.stdout.readline, ''):
+                    # Check if this is a progress bar line
+                    if '%|' in line and 'seconds/s]' in line:
+                        # Extract the progress bar components
+                        try:
+                            # Format: XX%|████████...| YYY.Z/ZZZ.Z [00:49<00:29, 50.27seconds/s]
+                            parts = line.split('|')
+                            percentage_part = parts[0]
+                            progress_part = parts[2].split('[')[0].strip()
+                            timing_part = '[' + parts[2].split('[')[1]
+                            
+                            # Extract current and total values
+                            current_val, total_val = progress_part.split('/')
+                            
+                            # Convert to integers
+                            current_int = int(float(current_val))
+                            total_int = int(float(total_val))
+                            
+                            # Rebuild progress bar with integer values
+                            new_line = f"{percentage_part}|{parts[1]}| {current_int}/{total_int} {timing_part}"
+                            print(new_line, end='\r')
+                        except Exception:
+                            # If parsing fails, print the original line
+                            print(line, end='')
+                    else:
+                        # Print other lines as is
+                        print(line, end='')
+                
+                # Wait for process to complete
+                result = process.wait()
                 
                 if result.returncode != 0:
                     self.log(logging.ERROR, f"Demucs failed with return code {result.returncode}")

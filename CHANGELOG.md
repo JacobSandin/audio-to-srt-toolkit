@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 - Fixed file path resolution in diarization to properly handle timestamped files
 - Implemented consistent file naming convention where files in timestamped directories don't have timestamps
 - Fixed model loading for Hugging Face models to properly handle model IDs
+- Improved progress bar formatting to display integer values instead of decimals
 
 ## [0.0.065] - 2025-04-24
 
