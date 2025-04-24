@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.062] - 2025-04-24
+
+### Changed
+- Added "[L]" prefix for low confidence transcriptions instead of filtering them out
+- Improved visibility of low confidence segments in the SRT output
+
 ## [0.0.061] - 2025-04-24
 
 ### Changed

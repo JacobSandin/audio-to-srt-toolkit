@@ -304,9 +304,11 @@ class WhisperTranscriber:
                         if segment_duration < 2.0:  # For short segments
                             effective_threshold = max(0.2, self.confidence_threshold - 0.2)  # Lower threshold by 0.2 but not below 0.2
                             
+                        # Mark low confidence text with [L] prefix instead of skipping
+                        # 2025-04-24 -JS
                         if confidence < effective_threshold:
-                            self.log(logging.DEBUG, f"Skipping low confidence text: '{text}' (confidence: {confidence:.2f} < {effective_threshold:.2f})")
-                            continue
+                            self.log(logging.DEBUG, f"Marking low confidence text: '{text}' (confidence: {confidence:.2f} < {effective_threshold:.2f})")
+                            text = f"[L] {text}"
                     
                     # Only check for hallucinations if the text is suspiciously long or matches known patterns
                     # 2025-04-24 -JS
