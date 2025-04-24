@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.064] - 2025-04-24
+
+### Changed
+- Updated frequency cutoffs to optimal ranges for speech: 300Hz highpass and 4500Hz lowpass
+- Fixed inconsistent debug file naming to use step-based naming consistently
+- Removed timestamps from debug filenames for better organization
+
 ## [0.0.063] - 2025-04-24
 
 ### Changed

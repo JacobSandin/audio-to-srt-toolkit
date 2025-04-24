@@ -32,11 +32,16 @@ class AudioPreprocessor:
         self.logger = logging.getLogger(__name__)
         
         # Default settings
-        self.highpass_cutoff = self.config.get('highpass_cutoff', 3750)  # Optimal for Swedish dialect isolation - 2025-04-23 -JS
-        self.lowpass_cutoff = self.config.get('lowpass_cutoff', 8000)
+        # 2025-04-24 -JS - Updated frequency cutoffs to optimal ranges for speech
+        self.highpass_cutoff = self.config.get('highpass_cutoff', 300)  # Remove low-frequency rumble while preserving speech
+        self.lowpass_cutoff = self.config.get('lowpass_cutoff', 4500)  # Preserve speech clarity while reducing high-frequency noise
         self.compression_threshold = self.config.get('compression_threshold', -10.0)
         self.compression_ratio = self.config.get('compression_ratio', 2.0)
         self.default_gain = self.config.get('default_gain', 8.0)  # +3dB gain
+        
+        # Option to skip filtering steps to preserve audio quality
+        # 2025-04-24 -JS
+        self.skip_filtering = self.config.get('skip_filtering', False)
         
         # Debug settings
         self.debug_mode = self.config.get('debug', False)
@@ -168,9 +173,10 @@ class AudioPreprocessor:
         
         # Determine paths for intermediate files
         if self.debug_mode and self.debug_dir:
-            # In debug mode, save intermediate files in debug directory with consistent naming
-            wav_file = os.path.join(self.debug_dir, f"{timestamped_name}_highquality.wav")
-            vocals_file = os.path.join(self.debug_dir, f"{timestamped_name}_vocals.wav")
+            # In debug mode, save intermediate files in debug directory with consistent step-based naming
+            # 2025-04-24 -JS - Updated to use consistent step-based naming without timestamps
+            wav_file = os.path.join(self.debug_dir, f"01_wav_conversion_{base_name}.wav")
+            vocals_file = os.path.join(self.debug_dir, f"02_vocals_{base_name}.wav")
         else:
             # In normal mode, use temporary files that will be cleaned up
             temp_dir = tempfile.mkdtemp(prefix="audio_toolkit_")
@@ -356,25 +362,34 @@ class AudioPreprocessor:
             self.log(logging.INFO, f"Audio loaded: {len(audio)/1000:.2f} seconds, {sample_rate}Hz sample rate")
             
             # Apply processing steps with volume compensation and save debug files for each step
-            self.log(logging.INFO, f"Applying high-pass filter (cutoff: {self.highpass_cutoff}Hz)...")
-            audio = self.apply_highpass(audio, cutoff=self.highpass_cutoff, sample_rate=sample_rate)
-            
-            # Compensate for volume loss after highpass filter
-            # 2025-04-24 -JS
-            self.log(logging.INFO, f"Compensating for volume loss after high-pass filter...")
-            audio = self.adjust_volume(audio, gain_db=6.0)  # Add 6dB to compensate for highpass filtering
-            self._save_debug_file(audio, input_file, "highpass")
-            self.log(logging.INFO, f"High-pass filter applied successfully with volume compensation")
-            
-            self.log(logging.INFO, f"Applying low-pass filter (cutoff: {self.lowpass_cutoff}Hz)...")
-            audio = self.apply_lowpass(audio, cutoff=self.lowpass_cutoff, sample_rate=sample_rate)
-            
-            # Compensate for volume loss after lowpass filter
-            # 2025-04-24 -JS
-            self.log(logging.INFO, f"Compensating for volume loss after low-pass filter...")
-            audio = self.adjust_volume(audio, gain_db=4.0)  # Add 4dB to compensate for lowpass filtering
-            self._save_debug_file(audio, input_file, "lowpass")
-            self.log(logging.INFO, f"Low-pass filter applied successfully with volume compensation")
+            if self.skip_filtering:
+                # Skip filtering to preserve audio quality
+                # 2025-04-24 -JS
+                self.log(logging.INFO, f"Skipping filtering steps to preserve audio quality")
+                self._save_debug_file(audio, input_file, "highpass")
+                self._save_debug_file(audio, input_file, "lowpass")
+            else:
+                # Apply highpass filter
+                self.log(logging.INFO, f"Applying high-pass filter (cutoff: {self.highpass_cutoff}Hz)...")
+                audio = self.apply_highpass(audio, cutoff=self.highpass_cutoff, sample_rate=sample_rate)
+                
+                # Compensate for volume loss after highpass filter
+                # 2025-04-24 -JS
+                self.log(logging.INFO, f"Compensating for volume loss after high-pass filter...")
+                audio = self.adjust_volume(audio, gain_db=6.0)  # Add 6dB to compensate for highpass filtering
+                self._save_debug_file(audio, input_file, "highpass")
+                self.log(logging.INFO, f"High-pass filter applied successfully with volume compensation")
+                
+                # Apply lowpass filter
+                self.log(logging.INFO, f"Applying low-pass filter (cutoff: {self.lowpass_cutoff}Hz)...")
+                audio = self.apply_lowpass(audio, cutoff=self.lowpass_cutoff, sample_rate=sample_rate)
+                
+                # Compensate for volume loss after lowpass filter
+                # 2025-04-24 -JS
+                self.log(logging.INFO, f"Compensating for volume loss after low-pass filter...")
+                audio = self.adjust_volume(audio, gain_db=4.0)  # Add 4dB to compensate for lowpass filtering
+                self._save_debug_file(audio, input_file, "lowpass")
+                self.log(logging.INFO, f"Low-pass filter applied successfully with volume compensation")
             
             self.log(logging.INFO, f"Applying compression (threshold: {self.compression_threshold}dB, ratio: {self.compression_ratio})...")
             audio = self.apply_compression(audio)
