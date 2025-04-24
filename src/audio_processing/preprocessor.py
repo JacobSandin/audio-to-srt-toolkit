@@ -717,7 +717,9 @@ class AudioPreprocessor:
                 if use_gpu:
                     cmd.extend([
                         "--device", "cuda",  # Use CUDA device
-                        "--shifts", "2"     # Use 2 shifts for better quality with GPU
+                        "--shifts", "2",    # Use 2 shifts for better quality with GPU
+                        "--float",          # Use float32 precision for better GPU utilization
+                        "--workers", "4"    # Use multiple workers for better CPU/GPU parallelization
                     ])
                     
                     # Check available GPU memory and adjust segment size accordingly
@@ -727,13 +729,20 @@ class AudioPreprocessor:
                         if gpu_mem > 8:  # If more than 8GB VRAM
                             # For high memory GPUs, we can use larger segments or no split
                             cmd.append("--no-split")  # Process the entire audio at once
+                            # Add overlap for better quality with high-memory GPUs
+                            cmd.extend(["--overlap", "0.25"])  # 25% overlap between segments
                         elif gpu_mem > 4:  # If more than 4GB VRAM
                             # For medium memory GPUs, use larger segments
                             cmd.extend(["--segment", "30"])  # Process in 30-second segments
+                            # Add overlap for better quality with medium-memory GPUs
+                            cmd.extend(["--overlap", "0.1"])  # 10% overlap between segments
                         else:  # Limited VRAM
                             # For limited memory GPUs, use smaller segments
                             cmd.extend(["--segment", "10"])  # Process in 10-second segments
                             
+                        # Add CUDA optimization flags
+                        cmd.extend(["--cudnn-benchmark"])  # Enable cuDNN benchmark mode for faster processing
+                        
                         self.log(logging.INFO, f"Optimized Demucs memory usage based on {gpu_mem:.1f}GB GPU memory")
                     except Exception as e:
                         self.log(logging.WARNING, f"Could not determine optimal segment size: {str(e)}")
