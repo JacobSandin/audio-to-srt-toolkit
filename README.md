@@ -122,7 +122,71 @@ The `audio_toolkit.py` script provides a unified command-line interface for all 
 
 # Combined preprocessing, diarization, and SRT generation with debug output
 ./audio_toolkit.py --input-audio your_audio_file.mp3 --diarize --generate-srt --debug
+
+# Continue processing from diarization step with a specific speaker count (input file is auto-detected)
+./audio_toolkit.py --continue-from diarization --continue-folder /path/to/output/20250424_123456_filename --speaker-count 3
+
+# Continue processing from SRT generation step
+./audio_toolkit.py --continue-from srt --continue-folder /path/to/output/20250424_123456_filename
+
+# Continue processing with debug files only (useful for troubleshooting)
+./audio_toolkit.py --continue-from diarization --continue-folder /path/to/output/20250424_123456_filename --debug-files-only --speaker-count 3
 ```
+
+## Handling Interruptions and Crashes
+
+The toolkit now supports continuing from a previous run if the process was interrupted or crashed. This is particularly useful for long audio files or when trying different speaker counts for diarization.
+
+### Continuing After a Crash
+
+If the diarization process crashes (e.g., due to memory issues or segmentation faults), you can continue from where it left off:
+
+```bash
+# Continue from diarization with a different speaker count
+./audio_toolkit.py --continue-from diarization --continue-folder out/20250424_123456_filename --speaker-count 3
+```
+
+### Trying Different Speaker Counts
+
+If you're not sure how many speakers are in the audio, you can try different counts sequentially:
+
+```bash
+# First try with 2 speakers
+./audio_toolkit.py --input-audio your_audio_file.mp3 --debug-files-only
+
+# If that doesn't work well, try with 3 speakers
+./audio_toolkit.py --continue-from diarization --continue-folder out/20250424_123456_filename --speaker-count 3
+
+# If needed, try with 4 speakers
+./audio_toolkit.py --continue-from diarization --continue-folder out/20250424_123456_filename --speaker-count 4
+```
+
+### Skipping to SRT Generation
+
+If diarization completed but you want to regenerate the SRT file with different settings:
+
+```bash
+# Regenerate SRT with different settings
+./audio_toolkit.py --continue-from srt --continue-folder out/20250424_123456_filename --include-timestamps --max-gap 2.0
+```
+
+### Interactive File Selection
+
+When continuing from a previous run with multiple segments files or audio files, the toolkit will now interactively prompt you to select which file to use:
+
+```bash
+# Continue from a folder with multiple segments files
+./audio_toolkit.py --continue-from srt --continue-folder out/20250424_123456_filename
+
+# You'll see a prompt like this:
+Found 3 segments files. Please select one:
+  [1] audio_processed.2speakers.segments
+  [2] audio_processed.3speakers.segments
+  [3] audio_processed.4speakers.segments
+Enter the number of the segments file to use: 
+```
+
+This is particularly useful when you've tried diarization with different speaker counts and want to choose the best one for SRT generation.
 
 ## Audio Processing Pipeline
 
@@ -251,6 +315,11 @@ The toolkit can generate SRT subtitle files from diarization results with the fo
 - `--speaker-format`: Format string for speaker labels (default: "{speaker}:")
 - `--max-gap`: Maximum gap in seconds between segments to merge (default: 1.0)
 - `--max-duration`: Maximum duration in seconds for merged segments (default: 10.0)
+- `--srt-pre`: Seconds to add before each segment for transcription (default: 0.1)
+- `--srt-post`: Seconds to add after each segment for transcription (default: 0.1)
+- `--srt-min-duration`: Minimum segment duration in seconds to include in SRT (default: 0.3)
+- `--srt-no-speaker`: Remove speaker labels from SRT output
+- `--confidence-threshold`: Minimum confidence threshold for transcriptions (0.0-1.0, default: 0.5)
 
 ### Debug Mode
 

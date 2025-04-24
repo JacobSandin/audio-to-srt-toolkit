@@ -2,6 +2,40 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.058] - 2025-04-24
+
+### Added
+- Added `--srt-min-duration` option to filter out segments shorter than specified duration (default: 0.3s)
+- Added `--srt-no-speaker` option to remove speaker labels from SRT output
+- Added `--confidence-threshold` option to filter out low-confidence transcriptions (default: 0.5)
+- Enhanced transcription quality with improved filtering of short segments
+- Added Voice Activity Detection (VAD) filtering during transcription
+
+## [0.0.057] - 2025-04-24
+
+### Added
+- Interactive selection of segments files when multiple options are available
+- Interactive selection of audio files when multiple files exist in the folder
+- Improved user experience for continuation feature with multiple files
+- Smart filtering of segments files based on speaker count when specified
+
+## [0.0.056] - 2025-04-24
+
+### Improved
+- Enhanced continuation feature to auto-detect input audio file from previous run
+- Made `--input-audio` optional when using continuation options
+- Added automatic retrieval of original input file from version_info.txt
+- Updated documentation with examples of the simplified continuation syntax
+
+## [0.0.055] - 2025-04-24
+
+### Added
+- Implemented continuation feature to resume processing from specific steps
+- Added `--continue-from` option with choices: preprocessing, diarization, srt
+- Added `--continue-folder` option to specify output folder from previous run
+- Added `--speaker-count` option to override speaker count configuration
+- Created comprehensive tests for continuation functionality
+
 ## [0.0.054] - 2025-04-24
 
 ### Improved

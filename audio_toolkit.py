@@ -14,6 +14,8 @@ import warnings
 import subprocess
 import yaml
 import torch
+import re  # 2025-04-24 -JS
+import glob  # 2025-04-24 -JS
 
 def setup_warning_filters():
     """
@@ -180,10 +182,27 @@ def parse_args():
         description='Audio Toolkit - Process, diarize, and create SRT files from audio recordings'
     )
     
-    parser.add_argument(
+    # 2025-04-24 -JS
+    # Create a mutually exclusive group for input methods
+    input_group = parser.add_mutually_exclusive_group(required=True)
+    
+    # Add input-audio to the group
+    input_group.add_argument(
         '--input-audio',
-        required=True,
         help='Path to input audio file'
+    )
+    
+    # Add continuation to the group as a single option
+    input_group.add_argument(
+        '--continue-folder',
+        help='Output folder from a previous run to continue from'
+    )
+    
+    # Add continue-from as a separate argument
+    parser.add_argument(
+        '--continue-from',
+        choices=['preprocessing', 'diarization', 'srt'],
+        help='Continue processing from a specific step (requires --continue-folder)'
     )
     
     parser.add_argument(
@@ -258,6 +277,56 @@ def parse_args():
         type=float,
         default=10.0,
         help='Maximum duration in seconds for a merged segment (default: 10.0)'
+    )
+    
+    # Transcription parameters
+    # 2025-04-24 -JS
+    parser.add_argument(
+        '--max-segments',
+        type=int,
+        help='Maximum number of segments to transcribe (for testing)'
+    )
+    
+    parser.add_argument(
+        '--skip-transcription',
+        action='store_true',
+        help='Skip transcription and use placeholders'
+    )
+    
+    # Segment padding for transcription
+    # 2025-04-24 -JS
+    parser.add_argument(
+        '--srt-pre',
+        type=float,
+        default=0.1,
+        help='Seconds to add before each segment for transcription (default: 0.1)'
+    )
+    
+    parser.add_argument(
+        '--srt-post',
+        type=float,
+        default=0.1,
+        help='Seconds to add after each segment for transcription (default: 0.1)'
+    )
+    
+    parser.add_argument(
+        '--confidence-threshold',
+        type=float,
+        default=0.5,
+        help='Minimum confidence threshold for transcriptions (0.0-1.0, default: 0.5)'
+    )
+    
+    parser.add_argument(
+        '--srt-min-duration',
+        type=float,
+        default=0.3,
+        help='Minimum segment duration in seconds to include in SRT (default: 0.3)'
+    )
+    
+    parser.add_argument(
+        '--srt-no-speaker',
+        action='store_true',
+        help='Remove speaker labels from SRT output'
     )
     
     # WAV conversion parameters
@@ -338,7 +407,23 @@ def parse_args():
         help='Show version information and exit'
     )
     
-    return parser.parse_args()
+    # Speaker count option
+    # 2025-04-24 -JS
+    
+    parser.add_argument(
+        '--speaker-count',
+        type=int,
+        help='Specify the number of speakers for diarization (overrides config)'
+    )
+    
+    args = parser.parse_args()
+    
+    # 2025-04-24 -JS
+    # Validate continuation requirements
+    if args.continue_folder and not args.continue_from:
+        parser.error("--continue-from is required when using --continue-folder")
+    
+    return args
 
 
 def load_config():
@@ -373,23 +458,130 @@ def process_audio(args):
     Returns:
         bool: True if processing was successful, False otherwise
     """
-    # Get input file path
-    input_file = os.path.abspath(args.input_audio)
-    
     # Create output directory if it doesn't exist
     output_dir = os.path.abspath(args.output_dir)
     os.makedirs(output_dir, exist_ok=True)
     
-    # Generate timestamp for this run
-    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    
-    # Get input filename without extension
-    input_basename = os.path.splitext(os.path.basename(input_file))[0]
-    
-    # Create run subdirectory with timestamp
-    run_dir = os.path.join(output_dir, f"{timestamp}_{input_basename}")
-    os.makedirs(run_dir, exist_ok=True)
-    log(logging.INFO, f"Created output directory: {run_dir}")
+    # Check if we're continuing from a previous run
+    # 2025-04-24 -JS
+    if args.continue_from and args.continue_folder:
+        run_dir = os.path.abspath(args.continue_folder)
+        if not os.path.exists(run_dir):
+            log(logging.ERROR, f"Continuation folder does not exist: {run_dir}")
+            return False
+        log(logging.INFO, f"Continuing from previous run in: {run_dir}")
+        
+        # When continuing from SRT, we don't need the original input file at all
+        # 2025-04-24 -JS
+        input_file = None
+        
+        # Only look for the original input file if we're not continuing from SRT
+        if args.continue_from != 'srt':
+            # Try to find the original input audio file from version_info.txt
+            version_info_path = os.path.join(run_dir, "version_info.txt")
+            
+            if os.path.exists(version_info_path):
+                try:
+                    with open(version_info_path, 'r') as f:
+                        content = f.read()
+                        
+                    # Try to find the input file from different formats
+                    # First check for the new format (Input File: path)
+                    input_file_match = re.search(r"Input File:\s*(.+)\n", content)
+                    if input_file_match:
+                        input_file = input_file_match.group(1).strip()
+                    
+                    # If not found, check for the older format (- File: path)
+                    if not input_file:
+                        file_match = re.search(r"- File:\s*(.+)\n", content)
+                        if file_match:
+                            input_file = file_match.group(1).strip()
+                    
+                    # Check if the file exists
+                    if input_file:
+                        if os.path.exists(input_file):
+                            log(logging.INFO, f"Retrieved original input file: {input_file}")
+                        else:
+                            log(logging.WARNING, f"Original input file not found at: {input_file}")
+                            log(logging.INFO, "Will look for audio files in the output folder instead")
+                            input_file = None
+                    else:
+                        log(logging.WARNING, "Could not find original input file information")
+                        input_file = None
+                except Exception as e:
+                    log(logging.WARNING, f"Could not read version_info.txt: {str(e)}")
+        
+        # Always check if the input file exists, regardless of where we got it from
+        # 2025-04-24 -JS
+        if input_file and not os.path.exists(input_file):
+            log(logging.WARNING, f"Input file does not exist: {input_file}")
+            input_file = None
+            
+        # If we don't have a valid input file, look for audio files in the folder
+        if not input_file:
+            # Look for audio files in the folder
+            audio_files = []
+            for ext in [".wav", ".mp3", ".mp4", ".m4a", ".flac"]:
+                audio_files.extend(glob.glob(os.path.join(run_dir, f"*{ext}")))
+            
+            # When continuing from SRT, include both processed and original files
+            # but prioritize processed WAV files in the display order
+            # 2025-04-24 -JS
+            if args.continue_from == 'srt':
+                processed_wavs = [f for f in audio_files if f.endswith("_processed.wav")]
+                other_audio = [f for f in audio_files if not f.endswith("_processed.wav")]
+                # Reorder to show processed files first, but keep all files
+                audio_files = processed_wavs + other_audio
+            
+            if len(audio_files) == 1:
+                input_file = audio_files[0]
+                log(logging.INFO, f"Found single audio file in folder: {input_file}")
+            elif len(audio_files) > 1:
+                log(logging.INFO, f"Found {len(audio_files)} audio files in folder. Please select one:")
+                for i, file in enumerate(audio_files):
+                    print(f"  [{i+1}] {os.path.basename(file)}")
+                
+                while True:
+                    try:
+                        choice = input("Enter the number of the audio file to use: ")
+                        idx = int(choice) - 1
+                        if 0 <= idx < len(audio_files):
+                            input_file = audio_files[idx]
+                            log(logging.INFO, f"Selected audio file: {input_file}")
+                            break
+                        else:
+                            print(f"Please enter a number between 1 and {len(audio_files)}")
+                    except ValueError:
+                        print("Please enter a valid number")
+            
+            # If we still don't have an input file, use the one provided or fail
+            if not input_file:
+                if not args.input_audio:
+                    log(logging.ERROR, "Could not determine input audio file. Please provide --input-audio.")
+                    return False
+                input_file = os.path.abspath(args.input_audio)
+                log(logging.INFO, f"Using provided input file: {input_file}")
+        
+        # Get input filename without extension for later use
+        input_basename = os.path.splitext(os.path.basename(input_file))[0]
+    else:
+        # Not continuing from a previous run, so we need an input file
+        if not args.input_audio:
+            log(logging.ERROR, "Input audio file is required when not continuing from a previous run")
+            return False
+            
+        input_file = os.path.abspath(args.input_audio)
+        
+        # Get input filename without extension
+        input_basename = os.path.splitext(os.path.basename(input_file))[0]
+        
+        # Generate timestamp for this run
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        
+        # Create run subdirectory with timestamp
+        run_dir = os.path.join(output_dir, f"{timestamp}_{input_basename}")
+        os.makedirs(run_dir, exist_ok=True)
+        log(logging.INFO, f"Created output directory: {run_dir}")
     
     # Create version_info.txt file in the run directory with detailed information
     version_info_path = os.path.join(run_dir, "version_info.txt")
@@ -427,7 +619,8 @@ def process_audio(args):
         # Version and processing information
         f.write(f"Audio Toolkit Version: {__version__}\n")
         f.write(f"Processing Date: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-        f.write(f"Command: {' '.join(sys.argv)}\n\n")
+        f.write(f"Command: {' '.join(sys.argv)}\n")
+        f.write(f"Input File: {input_file}\n\n")
         
         # Input file information
         f.write("Input File Information:\n")
@@ -478,6 +671,10 @@ def process_audio(args):
         debug_dir = os.path.join(run_dir, 'debug')
         os.makedirs(debug_dir, exist_ok=True)
         log(logging.DEBUG, f"Debug files will be saved to {debug_dir}")
+        
+    # Define output file path for preprocessed audio
+    # 2025-04-24 -JS
+    output_file = os.path.join(run_dir, f"{input_basename}_processed.wav")
     
     # Configure audio preprocessor
     config = {
@@ -504,8 +701,17 @@ def process_audio(args):
     
     # Preprocess audio
     preprocessing_result = True
-    if args.skip_preprocessing:
-        log(logging.INFO, "Skipping preprocessing as requested")
+    # Skip preprocessing if explicitly requested or if continuing from a later step
+    # 2025-04-24 -JS
+    if args.skip_preprocessing or (args.continue_from and args.continue_from != 'preprocessing'):
+        if args.continue_from:
+            log(logging.INFO, f"Skipping preprocessing due to continuation from {args.continue_from}")
+        else:
+            log(logging.INFO, "Skipping preprocessing as requested")
+        
+        # If continuing and the processed file exists, use it
+        if args.continue_from and os.path.exists(output_file):
+            input_file = output_file
     else:
         preprocessing_result = preprocessor.preprocess(input_file, output_file)
         if not preprocessing_result:
@@ -513,8 +719,10 @@ def process_audio(args):
             return False
         input_file = output_file  # Use processed file for diarization
     
-    # Perform speaker diarization unless explicitly skipped
-    if not args.skip_diarization:
+    # Perform speaker diarization unless explicitly skipped or continuing from SRT generation
+    # 2025-04-24 -JS
+    diarization_segments = None
+    if not args.skip_diarization and not (args.continue_from and args.continue_from == 'srt'):
         log(logging.INFO, "Starting speaker diarization")
         
         # Load configuration from config file
@@ -548,20 +756,166 @@ def process_audio(args):
             'batch_size': 32
         }
         
+        # Override speaker count if specified
+        # 2025-04-24 -JS
+        if args.speaker_count:
+            log(logging.INFO, f"Using specified speaker count: {args.speaker_count}")
+            diarization_config['min_speakers'] = args.speaker_count
+            diarization_config['max_speakers'] = args.speaker_count
+        
         # Import diarizer here to ensure the mock in tests works correctly
         from src.audio_processing.diarization import SpeakerDiarizer
         diarizer = SpeakerDiarizer(diarization_config)
         
         # Run diarization
-        diarization_segments = diarizer.diarize(input_file, run_dir)
-        if not diarization_segments:
-            log(logging.ERROR, "Diarization failed")
+        # 2025-04-24 -JS
+        # If continuing from diarization or srt, look for existing segments files
+        existing_segments = None
+        if args.continue_from in ['diarization', 'srt']:
+            # For SRT generation, we need to have processed audio file
+            if args.continue_from == 'srt' and not os.path.exists(os.path.join(run_dir, f"{input_basename}_processed.wav")):
+                # Look for processed WAV files
+                processed_wavs = glob.glob(os.path.join(run_dir, "*_processed.wav"))
+                if processed_wavs:
+                    # Use the first processed WAV file as input
+                    input_file = processed_wavs[0]
+                    input_basename = os.path.splitext(os.path.basename(input_file))[0].replace("_processed", "")
+                    log(logging.INFO, f"Using processed WAV file: {input_file}")
+            # Find all segments files in the folder
+            segments_files = glob.glob(os.path.join(run_dir, "*.segments"))
+            
+            # If speaker count is specified, filter for that count
+            if args.speaker_count and args.continue_from == 'diarization':
+                speaker_segments = [f for f in segments_files if f"{args.speaker_count}speakers" in os.path.basename(f)]
+                if speaker_segments:
+                    segments_files = speaker_segments
+            
+            if len(segments_files) == 1:
+                existing_segments = segments_files[0]
+                log(logging.INFO, f"Found segments file: {os.path.basename(existing_segments)}")
+            elif len(segments_files) > 1:
+                log(logging.INFO, f"Found {len(segments_files)} segments files. Please select one:")
+                for i, file in enumerate(segments_files):
+                    print(f"  [{i+1}] {os.path.basename(file)}")
+                
+                while True:
+                    try:
+                        choice = input("Enter the number of the segments file to use: ")
+                        idx = int(choice) - 1
+                        if 0 <= idx < len(segments_files):
+                            existing_segments = segments_files[idx]
+                            log(logging.INFO, f"Selected segments file: {os.path.basename(existing_segments)}")
+                            break
+                        else:
+                            print(f"Please enter a number between 1 and {len(segments_files)}")
+                    except ValueError:
+                        print("Please enter a valid number")
+        
+        if existing_segments:
+            # Load existing segments file
+            diarization_segments = diarizer.load_segments(existing_segments)
+            log(logging.INFO, f"Loaded existing diarization segments from {existing_segments}")
+        elif args.continue_from == 'srt':
+            # If continuing from SRT and no segments file found, we can't continue
+            log(logging.ERROR, "No segments file found. Cannot continue with SRT generation.")
             return False
+        else:
+            # Run diarization normally
+            diarization_segments = diarizer.diarize(input_file, run_dir)
+            if not diarization_segments:
+                log(logging.ERROR, "Diarization failed")
+                return False
         
         log(logging.INFO, "Speaker diarization completed successfully")
-        
-        # Generate SRT file unless explicitly skipped
-        if not args.skip_srt and diarization_segments:
+    
+    # Generate SRT file unless explicitly skipped
+    # 2025-04-24 -JS
+    if not args.skip_srt and (diarization_segments or args.continue_from == 'srt'):
+        # If continuing from SRT and we don't have diarization_segments yet, load them
+        if args.continue_from == 'srt' and not diarization_segments:
+            # Find all segments files in the folder
+            segments_files = glob.glob(os.path.join(run_dir, "*.segments"))
+            
+            if len(segments_files) == 1:
+                existing_segments = segments_files[0]
+                log(logging.INFO, f"Found segments file: {os.path.basename(existing_segments)}")
+            elif len(segments_files) > 1:
+                log(logging.INFO, f"Found {len(segments_files)} segments files. Please select one:")
+                for i, file in enumerate(segments_files):
+                    print(f"  [{i+1}] {os.path.basename(file)}")
+                
+                while True:
+                    try:
+                        choice = input("Enter the number of the segments file to use: ")
+                        idx = int(choice) - 1
+                        if 0 <= idx < len(segments_files):
+                            existing_segments = segments_files[idx]
+                            log(logging.INFO, f"Selected segments file: {os.path.basename(existing_segments)}")
+                            break
+                        else:
+                            print(f"Please enter a number between 1 and {len(segments_files)}")
+                    except ValueError:
+                        print("Please enter a valid number")
+            else:
+                log(logging.ERROR, "No segments file found. Cannot continue with SRT generation.")
+                return False
+            
+            # Import diarizer here to ensure the mock in tests works correctly
+            from src.audio_processing.diarization import SpeakerDiarizer
+            diarizer = SpeakerDiarizer({})
+            
+            # Load segments file
+            diarization_segments = diarizer.load_segments(existing_segments)
+            log(logging.INFO, f"Loaded diarization segments from {existing_segments}")
+            
+            # Transcribe the segments and generate SRT file directly
+            # 2025-04-24 -JS
+            if args.skip_transcription:
+                log(logging.INFO, "Skipping transcription as requested")
+            elif input_file and os.path.exists(input_file):
+                log(logging.INFO, "Transcribing audio segments and generating SRT file...")
+                try:
+                    # Import the transcriber
+                    from src.audio_processing.transcriber import WhisperTranscriber
+                    
+                    # Create transcriber with Swedish language and KBLab model
+                    # 2025-04-24 -JS
+                    transcriber = WhisperTranscriber({
+                        'language': 'sv',  # Swedish language
+                        'model_name': 'KBLab/kb-whisper-large',  # Use KBLab model optimized for Swedish
+                        'pre_padding': args.srt_pre,  # Add padding before segment
+                        'post_padding': args.srt_post,  # Add padding after segment
+                        'confidence_threshold': args.confidence_threshold,  # Minimum confidence threshold
+                        'min_segment_duration': args.srt_min_duration,  # Minimum segment duration
+                        'include_speaker': not args.srt_no_speaker  # Whether to include speaker labels
+                    })
+                    
+                    # Generate SRT file path
+                    srt_file = os.path.join(run_dir, f"{os.path.splitext(os.path.basename(input_file))[0]}.srt")
+                    
+                    # Limit segments if max_segments is specified
+                    if args.max_segments and args.max_segments > 0:
+                        log(logging.INFO, f"Limiting transcription to {args.max_segments} segments")
+                        segments_to_transcribe = diarization_segments[:args.max_segments]
+                    else:
+                        segments_to_transcribe = diarization_segments
+                    
+                    # Transcribe segments and write directly to SRT file
+                    # 2025-04-24 -JS - Added segment count tracking
+                    result, processed_count, filtered_count = transcriber.transcribe_segments_to_srt(input_file, segments_to_transcribe, srt_file)
+                    
+                    if result:
+                        log(logging.INFO, f"SRT file generated successfully: {srt_file}")
+                        log(logging.INFO, f"Processed {processed_count} segments, filtered {filtered_count} segments")
+                        log(logging.INFO, "SRT generation completed")
+                        return True
+                    else:
+                        log(logging.ERROR, "SRT generation failed")
+                except Exception as e:
+                    log(logging.ERROR, f"Error during transcription: {str(e)}")
+                    log(logging.WARNING, "Falling back to SRT generation without transcription")
+            else:
+                log(logging.WARNING, "No audio file available for transcription. SRT will be generated without text.")
             log(logging.INFO, "Generating SRT subtitle file")
             
             # Get diarization result
