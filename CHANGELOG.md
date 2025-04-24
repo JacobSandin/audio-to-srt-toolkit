@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.054] - 2025-04-24
+
+### Improved
+- Added centralized warning filtering system to suppress dependency warnings
+- Created comprehensive test for warning filtering
+- Filtered torchaudio, speechbrain, NumExpr, and TensorFlow warnings
+- Improved test output clarity by suppressing irrelevant warnings
+
+## [0.0.053] - 2025-04-24
+
+### Improved
+- Optimized logging levels to improve console output clarity
+- Moved technical details to DEBUG level while keeping essential progress at INFO level
+- Added clear documentation of recommended logging levels for different message types
+- Created comprehensive test for proper logging level usage
+
 ## [0.0.052] - 2025-04-23
 
 ### Fixed

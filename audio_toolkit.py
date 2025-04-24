@@ -3,7 +3,7 @@
 # Handles audio preprocessing, diarization, and SRT creation
 # 2025-04-23 -JS
 
-__version__ = "0.0.052"  # Version should match CHANGELOG.md
+__version__ = "0.0.054"  # Version should match CHANGELOG.md
 
 import os
 import sys
@@ -15,18 +15,54 @@ import subprocess
 import yaml
 import torch
 
-# Filter out warnings from dependencies
-warnings.filterwarnings("ignore", message="torchaudio._backend.*has been deprecated")
-warnings.filterwarnings("ignore", message="Module 'speechbrain.pretrained' was deprecated")
-warnings.filterwarnings("ignore", message="'audioop' is deprecated and slated for removal")
-warnings.filterwarnings("ignore", category=DeprecationWarning, module="matplotlib")
+def setup_warning_filters():
+    """
+    Set up warning filters to suppress known dependency warnings.
+    This function centralizes all warning filtering in one place for better maintainability.
+    
+    Filters warnings from:
+    - torchaudio deprecation warnings
+    - speechbrain module deprecation warnings
+    - audioop deprecation in pydub
+    - matplotlib deprecation warnings
+    - pyannote-specific warnings
+    
+    2025-04-24 -JS
+    """
+    # Reset all filters first to ensure our filters take precedence
+    warnings.resetwarnings()
+    
+    # Filter out warnings from torchaudio - use exact message patterns
+    warnings.filterwarnings("ignore", message="torchaudio._backend.set_audio_backend has been deprecated")
+    warnings.filterwarnings("ignore", message="torchaudio._backend.get_audio_backend has been deprecated")
+    warnings.filterwarnings("ignore", message="`torchaudio.backend.common.AudioMetaData` has been moved to `torchaudio.AudioMetaData`")
+    
+    # Filter out warnings from speechbrain
+    warnings.filterwarnings("ignore", message="Module 'speechbrain.pretrained' was deprecated")
+    
+    # Filter out audioop deprecation warnings
+    warnings.filterwarnings("ignore", message="'audioop' is deprecated and slated for removal")
+    
+    # Filter out matplotlib deprecation warnings
+    warnings.filterwarnings("ignore", category=DeprecationWarning, module="matplotlib")
+    warnings.filterwarnings("ignore", message="The get_cmap function was deprecated in Matplotlib 3.7")
+    
+    # Filter out pydub warnings
+    warnings.filterwarnings("ignore", category=DeprecationWarning, module="pydub.utils")
+    
+    # Filter out NumExpr/TensorFlow warnings from pyannote
+    # 2025-04-24 -JS
+    warnings.filterwarnings("ignore", message="NumExpr detected 8 cores")
+    warnings.filterwarnings("ignore", message="TensorFloat-32 (TF32) has been disabled")
+    warnings.filterwarnings("ignore", message="TensorFloat-32*")
+    
+    # Add more specific filters for common warnings
+    warnings.filterwarnings("ignore", message=".*ffmpeg/avlib.*")
+    warnings.filterwarnings("ignore", message=".*Applied quirks.*")
+    warnings.filterwarnings("ignore", message=".*Excluded quirks specified by the.*")
 
-# Specifically filter out the pydub audioop warning
-warnings.filterwarnings("ignore", category=DeprecationWarning, module="pydub.utils")
-
-# Filter out specific remaining pyannote warnings
-warnings.filterwarnings("ignore", message="The get_cmap function was deprecated in Matplotlib 3.7")
-warnings.filterwarnings("ignore", message="`torchaudio.backend.common.AudioMetaData` has been moved to `torchaudio.AudioMetaData`")
+# Set up warning filters at import time
+setup_warning_filters()
 from pathlib import Path
 
 # Add the project directory to the Python path

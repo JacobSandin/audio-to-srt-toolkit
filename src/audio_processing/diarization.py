@@ -73,8 +73,10 @@ class SpeakerDiarizer:
         # Set up logger
         self.logger = logging.getLogger(__name__)
         
-        self.log(logging.INFO, "Speaker diarizer initialized")
-        self.log(logging.INFO, f"Configuration: min_speakers={self.min_speakers}, max_speakers={self.max_speakers}, "
+        # Technical setup information should be at DEBUG level
+        # 2025-04-24 -JS
+        self.log(logging.DEBUG, "Speaker diarizer initialized")
+        self.log(logging.DEBUG, f"Configuration: min_speakers={self.min_speakers}, max_speakers={self.max_speakers}, "
                              f"clustering_threshold={self.clustering_threshold}")
     
     def log(self, level, *messages, **kwargs):
@@ -105,7 +107,9 @@ class SpeakerDiarizer:
             bool: True if models were loaded successfully, False otherwise
         """
         try:
-            self.log(logging.INFO, "Loading diarization model...")
+            # Technical model loading details should be at DEBUG level
+            # 2025-04-24 -JS
+            self.log(logging.DEBUG, "Loading diarization model...")
             
             # Get diarization models from config or use defaults
             diarization_models = []
@@ -134,12 +138,12 @@ class SpeakerDiarizer:
                     "pyannote/speaker-diarization-3.1"    # Fallback model
                 ]
                 
-            self.log(logging.INFO, f"Using diarization models: {diarization_models}")
+            self.log(logging.DEBUG, f"Using diarization models: {diarization_models}")  # 2025-04-24 -JS
             
             # Try loading models in order of preference
             for model_name in diarization_models:
                 try:
-                    self.log(logging.INFO, f"Trying to load diarization model: {model_name}")
+                    self.log(logging.DEBUG, f"Trying to load diarization model: {model_name}")  # 2025-04-24 -JS
                     # Load the pipeline with the clustering threshold parameter
                     self.diarization_pipeline = Pipeline.from_pretrained(
                         model_name,
@@ -150,11 +154,11 @@ class SpeakerDiarizer:
                     # In newer PyAnnote versions, we need to set this as a parameter of the pipeline
                     # rather than passing it to the apply() method
                     if hasattr(self.diarization_pipeline, "instantiate_params"):
-                        self.log(logging.INFO, f"Setting clustering_threshold={self.clustering_threshold} for diarization pipeline")
+                        self.log(logging.DEBUG, f"Setting clustering_threshold={self.clustering_threshold} for diarization pipeline")  # 2025-04-24 -JS
                         self.diarization_pipeline.instantiate_params = {
                             "clustering": {"threshold": self.clustering_threshold}
                         }
-                    self.log(logging.INFO, f"Successfully loaded diarization model: {model_name}")
+                    self.log(logging.DEBUG, f"Successfully loaded diarization model: {model_name}")  # 2025-04-24 -JS
                     break
                 except Exception as e:
                     self.log(logging.WARNING, f"Failed to load {model_name}: {str(e)}")
@@ -167,7 +171,7 @@ class SpeakerDiarizer:
             
             # Optimize GPU usage if available
             if self.use_gpu and torch.cuda.is_available():
-                self.log(logging.INFO, "Moving diarization pipeline to GPU...")
+                self.log(logging.DEBUG, "Moving diarization pipeline to GPU...")  # 2025-04-24 -JS
                 self.diarization_pipeline.to(torch.device("cuda"))
                 
                 # Enable TF32 for faster processing
@@ -180,14 +184,14 @@ class SpeakerDiarizer:
                 # Set batch size for better GPU utilization
                 if hasattr(self.diarization_pipeline, "batch_size"):
                     self.diarization_pipeline.batch_size = self.batch_size
-                    self.log(logging.INFO, f"Set batch_size to {self.batch_size}")
+                    self.log(logging.DEBUG, f"Set batch_size to {self.batch_size}")  # 2025-04-24 -JS
                 
                 # Try to allocate more GPU memory
                 torch.cuda.empty_cache()
                 torch.cuda.memory.set_per_process_memory_fraction(0.95)  # Use up to 95% of GPU memory
             
             # Load VAD pipeline
-            self.log(logging.INFO, "Loading Voice Activity Detection (VAD) model...")
+            self.log(logging.DEBUG, "Loading Voice Activity Detection (VAD) model...")  # 2025-04-24 -JS
             
             # Get VAD models from config or use defaults
             vad_models = []
@@ -216,18 +220,18 @@ class SpeakerDiarizer:
                     "pyannote/segmentation-3.0"
                 ]
                 
-            self.log(logging.INFO, f"Using VAD models: {vad_models}")
+            self.log(logging.DEBUG, f"Using VAD models: {vad_models}")  # 2025-04-24 -JS
             
             # Try loading VAD models in order of preference
             self.vad_pipeline = None
             for model_name in vad_models:
                 try:
-                    self.log(logging.INFO, f"Trying to load VAD model: {model_name}")
+                    self.log(logging.DEBUG, f"Trying to load VAD model: {model_name}")  # 2025-04-24 -JS
                     self.vad_pipeline = Pipeline.from_pretrained(
                         model_name,
                         use_auth_token=self.huggingface_token
                     )
-                    self.log(logging.INFO, f"Successfully loaded VAD model: {model_name}")
+                    self.log(logging.DEBUG, f"Successfully loaded VAD model: {model_name}")  # 2025-04-24 -JS
                     break
                 except Exception as e:
                     self.log(logging.WARNING, f"Failed to load {model_name}: {str(e)}")
@@ -243,7 +247,7 @@ class SpeakerDiarizer:
             
             # Try to load segmentation model
             try:
-                self.log(logging.INFO, "Loading segmentation model...")
+                self.log(logging.DEBUG, "Loading segmentation model...")  # 2025-04-24 -JS
                 
                 # Get segmentation models from config or use defaults
                 segmentation_models = []
@@ -272,18 +276,18 @@ class SpeakerDiarizer:
                         "HiTZ/pyannote-segmentation-3.0-RTVE"
                     ]
                     
-                self.log(logging.INFO, f"Using segmentation models: {segmentation_models}")
+                self.log(logging.DEBUG, f"Using segmentation models: {segmentation_models}")  # 2025-04-24 -JS
                 
                 # Try loading segmentation models in order of preference
                 self.segmentation_pipeline = None
                 for model_name in segmentation_models:
                     try:
-                        self.log(logging.INFO, f"Trying to load segmentation model: {model_name}")
+                        self.log(logging.DEBUG, f"Trying to load segmentation model: {model_name}")  # 2025-04-24 -JS
                         self.segmentation_pipeline = Pipeline.from_pretrained(
                             model_name,
                             use_auth_token=self.huggingface_token
                         )
-                        self.log(logging.INFO, f"Successfully loaded segmentation model: {model_name}")
+                        self.log(logging.DEBUG, f"Successfully loaded segmentation model: {model_name}")  # 2025-04-24 -JS
                         break
                     except Exception as e:
                         self.log(logging.WARNING, f"Failed to load {model_name}: {str(e)}")
@@ -297,13 +301,13 @@ class SpeakerDiarizer:
                 if self.use_gpu and torch.cuda.is_available():
                     self.segmentation_pipeline.to(torch.device("cuda"))
                 
-                self.log(logging.INFO, "Segmentation model loaded successfully")
+                self.log(logging.DEBUG, "Segmentation model loaded successfully")  # 2025-04-24 -JS
             except Exception as e:
                 self.log(logging.WARNING, f"Error loading segmentation model: {str(e)}")
                 self.log(logging.WARNING, "Continuing without segmentation model")
                 self.segmentation_pipeline = None
             
-            self.log(logging.INFO, "Models loaded successfully")
+            self.log(logging.DEBUG, "Models loaded successfully")  # 2025-04-24 -JS
             return True
             
         except Exception as e:
@@ -359,7 +363,7 @@ class SpeakerDiarizer:
                     })
                 
                 vad_end_time = time.time()
-                self.log(logging.INFO, f"Detected {len(speech_regions)} speech regions in {vad_end_time - vad_start_time:.2f} seconds")
+                self.log(logging.DEBUG, f"Detected {len(speech_regions)} speech regions in {vad_end_time - vad_start_time:.2f} seconds")  # 2025-04-24 -JS
                 
                 # Save VAD results to file if debug mode is enabled
                 if self.debug and self.debug_dir:
@@ -369,7 +373,7 @@ class SpeakerDiarizer:
                         for seg in speech_regions:
                             line = f"Speech from {seg['start']:.2f}s to {seg['end']:.2f}s"
                             f.write(line + "\n")
-                    self.log(logging.INFO, f"Voice activity detection results saved to {vad_output_file}")
+                    self.log(logging.DEBUG, f"Voice activity detection results saved to {vad_output_file}")  # 2025-04-24 -JS
             
             # Try different speaker counts
             all_results = {}
@@ -382,7 +386,7 @@ class SpeakerDiarizer:
             
             for num_speakers in speaker_counts:
                 try:
-                    self.log(logging.INFO, f"Trying with num_speakers={num_speakers}")
+                    self.log(logging.DEBUG, f"Trying with num_speakers={num_speakers}")  # 2025-04-24 -JS
                     start_time_run = time.time()
                     
                     # Run diarization with the current speaker count
@@ -433,8 +437,8 @@ class SpeakerDiarizer:
                         best_speaker_count = num_speakers
                     
                     self.log(logging.INFO, f"Successfully completed diarization with {num_speakers} speakers")
-                    self.log(logging.INFO, f"Found {len(segments)} speaker segments in {duration_run:.2f} seconds")
-                    self.log(logging.INFO, f"Results saved to {run_output_file}")
+                    self.log(logging.DEBUG, f"Found {len(segments)} speaker segments in {duration_run:.2f} seconds")  # 2025-04-24 -JS
+                    self.log(logging.DEBUG, f"Results saved to {run_output_file}")  # 2025-04-24 -JS
                     
                     # Add to successful runs
                     successful_runs.append(num_speakers)
@@ -445,7 +449,7 @@ class SpeakerDiarizer:
             # If no successful runs, try with auto speaker detection
             if not successful_runs:
                 try:
-                    self.log(logging.INFO, "Trying with auto speaker detection")
+                    self.log(logging.DEBUG, "Trying with auto speaker detection")  # 2025-04-24 -JS
                     start_time_run = time.time()
                     
                     # Run diarization with auto speaker detection
@@ -479,8 +483,8 @@ class SpeakerDiarizer:
                     duration_run = end_time_run - start_time_run
                     
                     self.log(logging.INFO, "Successfully completed diarization with auto speaker detection")
-                    self.log(logging.INFO, f"Found {len(segments)} speaker segments in {duration_run:.2f} seconds")
-                    self.log(logging.INFO, f"Results saved to {run_output_file}")
+                    self.log(logging.DEBUG, f"Found {len(segments)} speaker segments in {duration_run:.2f} seconds")  # 2025-04-24 -JS
+                    self.log(logging.DEBUG, f"Results saved to {run_output_file}")  # 2025-04-24 -JS
                     
                 except Exception as e:
                     self.log(logging.ERROR, f"Error during auto diarization: {str(e)}")
@@ -488,7 +492,7 @@ class SpeakerDiarizer:
             # Print timing information
             end_time = time.time()
             total_duration = end_time - start_time
-            self.log(logging.INFO, f"Total diarization time: {total_duration:.2f} seconds")
+            self.log(logging.DEBUG, f"Total diarization time: {total_duration:.2f} seconds")  # 2025-04-24 -JS
             
             # Create a summary file
             summary_file = os.path.join(output_dir, f"{base_output}.diarization_summary.txt")
@@ -508,7 +512,7 @@ class SpeakerDiarizer:
                     else:
                         f.write(f"  {count} speakers: Failed\n")
             
-            self.log(logging.INFO, f"Diarization summary saved to {summary_file}")
+            self.log(logging.DEBUG, f"Diarization summary saved to {summary_file}")  # 2025-04-24 -JS
             
             # Initialize diarization segments if not already done
             if not hasattr(self, 'diarization_segments'):
@@ -578,7 +582,7 @@ class SpeakerDiarizer:
             with open(output_file, 'w', encoding='utf-8') as f:
                 json.dump(self.diarization_segments, f, indent=2)
                 
-            self.log(logging.INFO, f"Saved {len(self.diarization_segments)} diarization segments to {output_file}")
+            self.log(logging.DEBUG, f"Saved {len(self.diarization_segments)} diarization segments to {output_file}")  # 2025-04-24 -JS
             return True
             
         except Exception as e:
