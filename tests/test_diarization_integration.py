@@ -10,11 +10,12 @@ import tempfile
 from unittest.mock import patch, MagicMock
 import pytest
 
-# Add the src directory to the Python path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
+# Add the project root to the Python path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # Import modules to test
 from audio_toolkit import process_audio
+from test_utils import create_test_args
 
 
 class TestDiarizationIntegration(unittest.TestCase):
@@ -56,32 +57,12 @@ class TestDiarizationIntegration(unittest.TestCase):
         mock_diarizer_instance.diarize.return_value = True
         mock_diarizer.return_value = mock_diarizer_instance
         
-        # Create test args
-        class Args:
-            pass
-        
-        args = Args()
-        args.input_audio = self.input_file
-        args.output_dir = self.output_dir
+        # Create test args using our helper function
+        args = create_test_args(self.input_file, self.output_dir)
         args.skip_preprocessing = False
         args.skip_diarization = False
         args.skip_srt = True  # Not generating SRT in this test
-        args.min_speakers = 2
-        args.max_speakers = 4
-        args.clustering_threshold = 0.65
-        args.highpass = 150
-        args.lowpass = 8000
-        args.compression_threshold = -10.0
-        args.compression_ratio = 2.0
-        args.volume_gain = 3.0
-        args.bit_depth = 24
-        args.sample_rate = 48000
-        args.quiet = False
         args.debug = True
-        args.debug_files_only = False
-        args.speaker_format = "{speaker}:"
-        args.max_gap = 1.0
-        args.max_duration = 10.0
         
         # Call the process_audio function
         result = process_audio(args)
@@ -101,7 +82,7 @@ class TestDiarizationIntegration(unittest.TestCase):
     @patch('src.audio_processing.diarization.SpeakerDiarizer')
     def test_diarization_with_custom_parameters(self, mock_diarizer, mock_preprocessor):
         """
-        Test diarization with custom parameters
+        Test that the CLI properly passes custom diarization parameters
         """
         # Setup mocks
         mock_preprocessor_instance = MagicMock()
@@ -112,32 +93,13 @@ class TestDiarizationIntegration(unittest.TestCase):
         mock_diarizer_instance.diarize.return_value = True
         mock_diarizer.return_value = mock_diarizer_instance
         
-        # Create test args
-        class Args:
-            pass
-        
-        args = Args()
-        args.input_audio = self.input_file
-        args.output_dir = self.output_dir
+        # Create test args using our helper function
+        args = create_test_args(self.input_file, self.output_dir)
         args.skip_preprocessing = False
         args.skip_diarization = False
         args.skip_srt = True  # Not generating SRT in this test
-        args.min_speakers = 3
-        args.max_speakers = 5
-        args.clustering_threshold = 0.7
-        args.highpass = 150
-        args.lowpass = 8000
-        args.compression_threshold = -10.0
-        args.compression_ratio = 2.0
-        args.volume_gain = 3.0
-        args.bit_depth = 24
-        args.sample_rate = 48000
-        args.quiet = False
-        args.debug = False
-        args.debug_files_only = False
-        args.generate_srt = False
-        args.include_timestamps = False
-        args.speaker_format = "{speaker}:"
+        args.speaker_count = 3  # Custom speaker count
+        args.clustering_threshold = 0.75  # Custom threshold
         args.max_gap = 1.0
         args.max_duration = 10.0
         
@@ -151,9 +113,11 @@ class TestDiarizationIntegration(unittest.TestCase):
         
         # Check diarization configuration
         diarizer_config = mock_diarizer.call_args[0][0]
+        # When speaker_count is set, both min and max speakers should be equal to it
+        # 2025-04-24 -JS
         self.assertEqual(diarizer_config['min_speakers'], 3)
-        self.assertEqual(diarizer_config['max_speakers'], 5)
-        self.assertEqual(diarizer_config['clustering_threshold'], 0.7)
+        self.assertEqual(diarizer_config['max_speakers'], 3)
+        self.assertEqual(diarizer_config['clustering_threshold'], 0.75)
         self.assertFalse(diarizer_config['debug'])
     
     @patch('src.audio_processing.preprocessor.AudioPreprocessor')
@@ -180,14 +144,35 @@ class TestDiarizationIntegration(unittest.TestCase):
         args.skip_preprocessing = True
         args.skip_diarization = False
         args.skip_srt = True  # Not generating SRT in this test
+        args.skip_transcription = False
         args.min_speakers = 2
         args.max_speakers = 4
+        args.speaker_count = None
         args.clustering_threshold = 0.65
+        
+        # Audio processing parameters
         args.highpass = 150
         args.lowpass = 8000
         args.compression_threshold = -10.0
         args.compression_ratio = 2.0
-        args.volume_gain = 3.0
+        args.volume_gain = 1.5
+        args.bit_depth = 16
+        args.sample_rate = 44100
+        
+        # New options
+        args.use_vocals_directly = False
+        args.skip_steps = None
+        args.list_steps = False
+        args.debug = False
+        args.debug_files_only = False
+        args.continue_from = None
+        args.continue_folder = None
+        args.srt_pre = 0.1
+        args.srt_post = 0.1
+        args.srt_min_duration = 0.3
+        args.srt_no_speaker = False
+        args.confidence_threshold = 0.5
+        args.max_segments = 0
         args.bit_depth = 24
         args.sample_rate = 48000
         args.quiet = False

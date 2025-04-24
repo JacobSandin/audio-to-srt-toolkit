@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.065] - 2025-04-24
+
+### Added
+- Added `--use-vocals-directly` option to skip post-processing and use the vocals file directly for transcription
+- Added `--skip-steps` option to selectively skip specific processing steps (e.g., "highpass,lowpass")
+- Added `--list-steps` option to display all available processing steps that can be skipped
+- Improved flexibility in audio processing pipeline to preserve audio quality
+
 ## [0.0.064] - 2025-04-24
 
 ### Changed

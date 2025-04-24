@@ -6,14 +6,23 @@
 import os
 import sys
 import unittest
-import tempfile
 from unittest.mock import patch, MagicMock
+import tempfile
 import pytest
-from pathlib import Path
-import datetime
 
-# Add the src directory to the Python path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../src')))
+# Add the project root to the Python path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+
+# Import the main module
+try:
+    import audio_toolkit
+    from tests.test_audio_toolkit import create_test_args
+except ImportError:
+    pass  # We'll implement this later
+
+# Import test utilities
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))  
+from test_utils import create_test_args
 
 # Import modules to test
 from src.audio_processing.preprocessor import AudioPreprocessor
@@ -103,12 +112,17 @@ class TestDebugOutput(unittest.TestCase):
         """
         Test that the --debug flag in the CLI enables debug output
         """
-        # Create test args
+        # Create a test file
+        test_file = os.path.join(self.temp_dir.name, "test_input.mp3")
+        with open(test_file, 'wb') as f:
+            f.write(b'test audio data')
+            
+        # Create test args manually to avoid import issues
         class Args:
             pass
-            
+                
         args = Args()
-        args.input_audio = self.input_file
+        args.input_audio = test_file
         args.output_dir = self.output_dir
         args.skip_preprocessing = False
         args.skip_diarization = True
@@ -126,6 +140,14 @@ class TestDebugOutput(unittest.TestCase):
         args.min_speakers = 2
         args.max_speakers = 4
         args.clustering_threshold = 0.65
+        args.continue_from = None
+        args.continue_folder = None
+        
+        # New options
+        args.use_vocals_directly = False
+        args.skip_steps = None
+        args.list_steps = False
+        args.skip_transcription = False
         
         # Import the process_audio function
         from audio_toolkit import process_audio

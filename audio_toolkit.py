@@ -363,10 +363,28 @@ def parse_args(args=None):
     
     # Audio processing parameters
     parser.add_argument(
+        '--use-vocals-directly',
+        action='store_true',
+        help='Use the vocals file directly for transcription, skipping all post-processing steps'
+    )
+    
+    parser.add_argument(
+        '--skip-steps',
+        type=str,
+        help='Comma-separated list of processing steps to skip (e.g., "highpass,lowpass")'
+    )
+    
+    parser.add_argument(
+        '--list-steps',
+        action='store_true',
+        help='List all available processing steps that can be skipped'
+    )
+    
+    parser.add_argument(
         '--highpass',
         type=int,
-        default=3750,
-        help='High-pass filter cutoff frequency in Hz (default: 3750, optimal for Swedish dialect isolation)'
+        default=300,
+        help='High-pass filter cutoff frequency in Hz (default: 300)'
     )
     
     parser.add_argument(
@@ -705,7 +723,10 @@ def process_audio(args):
         'lowpass_cutoff': args.lowpass,
         'compression_threshold': args.compression_threshold,
         'compression_ratio': args.compression_ratio,
-        'volume_gain': args.volume_gain
+        'volume_gain': args.volume_gain,
+        # New options for skipping steps
+        'use_vocals_directly': args.use_vocals_directly,
+        'skip_steps': args.skip_steps.split(',') if args.skip_steps else []
     }
     
     log(logging.INFO, f"Processing audio file: {input_file}")
@@ -1094,12 +1115,39 @@ def check_dependencies():
     
     return True
 
+def list_available_steps():
+    """
+    Display all available processing steps that can be skipped.
+    
+    2025-04-24 -JS
+    """
+    print("\033[1mAvailable processing steps that can be skipped:\033[0m")
+    print("\nAudio preprocessing steps:")
+    print("  - highpass             : Skip high-pass filter (preserves low frequencies)")
+    print("  - highpass_compensation: Skip volume compensation after high-pass filter")
+    print("  - lowpass              : Skip low-pass filter (preserves high frequencies)")
+    print("  - lowpass_compensation : Skip volume compensation after low-pass filter")
+    print("  - compression          : Skip dynamic range compression")
+    print("  - normalize            : Skip audio normalization")
+    print("  - volume               : Skip final volume adjustment")
+    
+    print("\nUsage examples:")
+    print("  --skip-steps highpass,lowpass          : Skip both filters but keep other processing")
+    print("  --skip-steps compression,normalize     : Skip compression and normalization")
+    print("  --use-vocals-directly                 : Skip all post-processing steps")
+    print("\nNote: Steps are applied in the order listed above.")
+
 def main():
     """
     Main entry point for the audio toolkit.
     """
     # Parse command-line arguments
     args = parse_args()
+    
+    # Handle --list-steps option
+    if args.list_steps:
+        list_available_steps()
+        return True
     
     # Set up logging
     setup_logging(args)

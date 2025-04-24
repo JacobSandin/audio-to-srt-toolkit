@@ -37,11 +37,20 @@ class AudioPreprocessor:
         self.lowpass_cutoff = self.config.get('lowpass_cutoff', 4500)  # Preserve speech clarity while reducing high-frequency noise
         self.compression_threshold = self.config.get('compression_threshold', -10.0)
         self.compression_ratio = self.config.get('compression_ratio', 2.0)
-        self.default_gain = self.config.get('default_gain', 8.0)  # +3dB gain
+        self.default_gain = self.config.get('default_gain', 3.0)  # +3dB gain
         
-        # Option to skip filtering steps to preserve audio quality
+        # Options to skip specific processing steps
         # 2025-04-24 -JS
+        self.use_vocals_directly = self.config.get('use_vocals_directly', False)
+        self.skip_steps = self.config.get('skip_steps', [])
+        
+        # For backward compatibility
         self.skip_filtering = self.config.get('skip_filtering', False)
+        if self.skip_filtering:
+            if 'highpass' not in self.skip_steps:
+                self.skip_steps.append('highpass')
+            if 'lowpass' not in self.skip_steps:
+                self.skip_steps.append('lowpass')
         
         # Debug settings
         self.debug_mode = self.config.get('debug', False)
@@ -199,10 +208,18 @@ class AudioPreprocessor:
                 self.log(logging.ERROR, "Vocal separation failed")
                 return False
             
-            # Step 3: Process the separated vocals
-            if not self.process_audio(vocals_file, output_file):
-                self.log(logging.ERROR, "Audio processing failed")
-                return False
+            # Step 3: Process the separated vocals or use them directly
+            if self.use_vocals_directly:
+                # Use vocals file directly without additional processing
+                # 2025-04-24 -JS
+                self.log(logging.INFO, f"Using vocals file directly as requested: {vocals_file}")
+                shutil.copy(vocals_file, output_file)
+                self.log(logging.INFO, f"Copied vocals file to output: {output_file}")
+            else:
+                # Apply additional processing to the vocals file
+                if not self.process_audio(vocals_file, output_file):
+                    self.log(logging.ERROR, "Audio processing failed")
+                    return False
             
             self.log(logging.INFO, f"Preprocessing completed successfully")
             return True
@@ -362,49 +379,71 @@ class AudioPreprocessor:
             self.log(logging.INFO, f"Audio loaded: {len(audio)/1000:.2f} seconds, {sample_rate}Hz sample rate")
             
             # Apply processing steps with volume compensation and save debug files for each step
-            if self.skip_filtering:
-                # Skip filtering to preserve audio quality
-                # 2025-04-24 -JS
-                self.log(logging.INFO, f"Skipping filtering steps to preserve audio quality")
+            # 2025-04-24 -JS - Added support for skipping specific processing steps
+            
+            # Step 1: Highpass filter
+            if 'highpass' in self.skip_steps:
+                self.log(logging.INFO, f"Skipping high-pass filter as requested")
                 self._save_debug_file(audio, input_file, "highpass")
-                self._save_debug_file(audio, input_file, "lowpass")
             else:
                 # Apply highpass filter
                 self.log(logging.INFO, f"Applying high-pass filter (cutoff: {self.highpass_cutoff}Hz)...")
                 audio = self.apply_highpass(audio, cutoff=self.highpass_cutoff, sample_rate=sample_rate)
                 
                 # Compensate for volume loss after highpass filter
-                # 2025-04-24 -JS
-                self.log(logging.INFO, f"Compensating for volume loss after high-pass filter...")
-                audio = self.adjust_volume(audio, gain_db=6.0)  # Add 6dB to compensate for highpass filtering
-                self._save_debug_file(audio, input_file, "highpass")
-                self.log(logging.INFO, f"High-pass filter applied successfully with volume compensation")
+                if 'highpass_compensation' not in self.skip_steps:
+                    self.log(logging.INFO, f"Compensating for volume loss after high-pass filter...")
+                    audio = self.adjust_volume(audio, gain_db=6.0)  # Add 6dB to compensate for highpass filtering
                 
+                self._save_debug_file(audio, input_file, "highpass")
+                self.log(logging.INFO, f"High-pass filter processing completed")
+            
+            # Step 2: Lowpass filter
+            if 'lowpass' in self.skip_steps:
+                self.log(logging.INFO, f"Skipping low-pass filter as requested")
+                self._save_debug_file(audio, input_file, "lowpass")
+            else:
                 # Apply lowpass filter
                 self.log(logging.INFO, f"Applying low-pass filter (cutoff: {self.lowpass_cutoff}Hz)...")
                 audio = self.apply_lowpass(audio, cutoff=self.lowpass_cutoff, sample_rate=sample_rate)
                 
                 # Compensate for volume loss after lowpass filter
-                # 2025-04-24 -JS
-                self.log(logging.INFO, f"Compensating for volume loss after low-pass filter...")
-                audio = self.adjust_volume(audio, gain_db=4.0)  # Add 4dB to compensate for lowpass filtering
+                if 'lowpass_compensation' not in self.skip_steps:
+                    self.log(logging.INFO, f"Compensating for volume loss after low-pass filter...")
+                    audio = self.adjust_volume(audio, gain_db=4.0)  # Add 4dB to compensate for lowpass filtering
+                
                 self._save_debug_file(audio, input_file, "lowpass")
-                self.log(logging.INFO, f"Low-pass filter applied successfully with volume compensation")
+                self.log(logging.INFO, f"Low-pass filter processing completed")
             
-            self.log(logging.INFO, f"Applying compression (threshold: {self.compression_threshold}dB, ratio: {self.compression_ratio})...")
-            audio = self.apply_compression(audio)
-            self._save_debug_file(audio, input_file, "compression")
-            self.log(logging.INFO, f"Compression applied successfully")
+            # Step 3: Compression
+            if 'compression' in self.skip_steps:
+                self.log(logging.INFO, f"Skipping compression as requested")
+                self._save_debug_file(audio, input_file, "compression")
+            else:
+                self.log(logging.INFO, f"Applying compression (threshold: {self.compression_threshold}dB, ratio: {self.compression_ratio})...")
+                audio = self.apply_compression(audio)
+                self._save_debug_file(audio, input_file, "compression")
+                self.log(logging.INFO, f"Compression applied successfully")
             
-            self.log(logging.INFO, f"Normalizing audio levels...")
-            audio = self.normalize(audio)
-            self._save_debug_file(audio, input_file, "normalize")
-            self.log(logging.INFO, f"Normalization completed successfully")
+            # Step 4: Normalization
+            if 'normalize' in self.skip_steps:
+                self.log(logging.INFO, f"Skipping normalization as requested")
+                self._save_debug_file(audio, input_file, "normalize")
+            else:
+                self.log(logging.INFO, f"Normalizing audio levels...")
+                audio = self.normalize(audio)
+                self._save_debug_file(audio, input_file, "normalize")
+                self.log(logging.INFO, f"Normalization completed successfully")
             
-            self.log(logging.INFO, f"Adjusting volume (gain: {self.default_gain:.1f}dB)...")
-            audio = self.adjust_volume(audio, gain_db=self.default_gain)
-            self._save_debug_file(audio, input_file, "volume")
-            self.log(logging.INFO, f"Volume adjustment completed successfully")
+            # Step 5: Volume adjustment
+            if 'volume' in self.skip_steps:
+                self.log(logging.INFO, f"Skipping volume adjustment as requested")
+                self._save_debug_file(audio, input_file, "volume")
+            else:
+                self.log(logging.INFO, f"Adjusting volume (gain: {self.default_gain:.1f}dB)...")
+                audio = self.adjust_volume(audio, gain_db=self.default_gain)
+                self._save_debug_file(audio, input_file, "volume")
+                self.log(logging.INFO, f"Volume adjustment completed successfully")
             
             # Save the final processed audio
             self.log(logging.DEBUG, f"Saving processed audio to {output_file}")

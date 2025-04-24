@@ -15,6 +15,7 @@ from pyannote.audio.pipelines.utils.hook import ProgressHook
 import datetime
 import matplotlib.pyplot as plt
 import json
+import re  # 2025-04-24 -JS
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -557,6 +558,59 @@ class SpeakerDiarizer:
             return self.diarization_segments
         else:
             self.log(logging.WARNING, "No diarization segments available")
+            return []
+            
+    def load_segments(self, segments_file):
+        """
+        Load diarization segments from a file.
+        Used for continuing processing from a previous run.
+        Supports both JSON and text formats.
+        
+        Args:
+            segments_file: Path to the segments file
+            
+        Returns:
+            list: List of diarization segments
+        
+        2025-04-24 -JS
+        """
+        if not os.path.exists(segments_file):
+            self.log(logging.ERROR, f"Segments file not found: {segments_file}")
+            return []
+        
+        self.diarization_segments = []
+        
+        try:
+            # First try to load as JSON
+            try:
+                with open(segments_file, 'r') as f:
+                    self.diarization_segments = json.load(f)
+                self.log(logging.INFO, f"Loaded {len(self.diarization_segments)} segments from JSON file")
+            except json.JSONDecodeError:
+                # If JSON fails, try to parse as text format
+                self.log(logging.INFO, "File is not in JSON format, trying text format")
+                with open(segments_file, 'r') as f:
+                    for line in f:
+                        # Parse lines like "Speaker SPEAKER_01 from 133.23s to 134.19s"
+                        match = re.match(r"Speaker (\S+) from (\d+\.\d+)s to (\d+\.\d+)s", line.strip())
+                        if match:
+                            speaker, start, end = match.groups()
+                            # Add a placeholder text for transcription
+                            # This ensures SRT files have content when generated from text format segments
+                            # 2025-04-24 -JS
+                            segment = {
+                                "speaker": speaker,
+                                "start": float(start),
+                                "end": float(end),
+                                "text": "[Transcription pending]"  # Add placeholder text
+                            }
+                            self.diarization_segments.append(segment)
+                
+                self.log(logging.INFO, f"Loaded {len(self.diarization_segments)} segments from text file")
+            
+            return self.diarization_segments
+        except Exception as e:
+            self.log(logging.ERROR, f"Error loading segments file: {str(e)}")
             return []
     
     def save_diarization_result(self, output_file):

@@ -12,13 +12,16 @@ import pytest
 import argparse
 
 # Add the project root to the Python path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))  
 
 # Import the main module
 try:
     import audio_toolkit
 except ImportError:
     pass  # We'll implement this later
+
+# Import test utilities
+from test_utils import create_test_args
 
 
 class TestAudioToolkitCLI(unittest.TestCase):
@@ -87,18 +90,11 @@ class TestAudioToolkitCLI(unittest.TestCase):
             mock_preprocessor = MockPreprocessor.return_value
             mock_preprocessor.preprocess.return_value = True
             
-            # Create test args
-            class Args:
-                pass
-                
-            args = Args()
-            args.input_audio = test_file
-            args.output_dir = self.output_dir
+            # Create test args using our helper function
+            args = create_test_args(test_file, self.output_dir)
             args.skip_preprocessing = False
             args.skip_diarization = False
             args.skip_srt = False
-            args.highpass = 150
-            args.lowpass = 8000
             args.compression_threshold = -10.0
             args.compression_ratio = 2.0
             args.volume_gain = 6.0
