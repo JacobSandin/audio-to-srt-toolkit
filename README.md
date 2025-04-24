@@ -270,6 +270,28 @@ These options are particularly useful when working with high-quality audio recor
 
 All processing maintains the high-quality WAV format throughout the pipeline to preserve audio quality for dialect analysis. Debug mode saves intermediate files at each step for analysis and troubleshooting.
 
+### File Organization and Naming Convention
+
+- **Output Directory Structure**: The toolkit creates timestamped directories for each processing run
+  ```
+  out/
+  ├── 20250424_195130_Cardo recording 1/  # Timestamped directory for each run
+  │   ├── debug/                           # Debug files for each processing step
+  │   │   ├── 01_wav_conversion_Cardo recording 1.wav
+  │   │   ├── 02_vocals_Cardo recording 1.wav
+  │   │   └── ...
+  │   ├── Cardo recording 1_processed.wav  # Processed audio file (no timestamp)
+  │   ├── Cardo recording 1.segments       # Diarization segments file
+  │   └── Cardo recording 1.srt            # Generated SRT file
+  └── ...
+  ```
+
+- **Naming Convention**: 
+  - Directories have timestamps (e.g., `20250424_195130_Cardo recording 1/`)
+  - Files inside timestamped directories don't have timestamps in their names
+  - Debug files are prefixed with step numbers (e.g., `01_wav_conversion_`)
+  - This organization keeps the file structure clean and logical
+
 ### Processing Flow Diagram
 
 ```

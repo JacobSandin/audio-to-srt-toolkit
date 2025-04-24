@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.066] - 2025-04-24
+
+### Fixed
+- Fixed file handle management to prevent ResourceWarning messages
+- Fixed file path resolution in diarization to properly handle timestamped files
+- Implemented consistent file naming convention where files in timestamped directories don't have timestamps
+- Fixed model loading for Hugging Face models to properly handle model IDs
+
 ## [0.0.065] - 2025-04-24
 
 ### Added
