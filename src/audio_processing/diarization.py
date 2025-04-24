@@ -146,10 +146,16 @@ class SpeakerDiarizer:
                 try:
                     self.log(logging.DEBUG, f"Trying to load diarization model: {model_name}")  # 2025-04-24 -JS
                     # Load the pipeline with the clustering threshold parameter
-                    self.diarization_pipeline = Pipeline.from_pretrained(
-                        model_name,
-                        use_auth_token=self.huggingface_token
-                    )
+                    # Ensure model_name is treated as a Hugging Face model ID, not a local path
+                    if os.path.exists(model_name):
+                        # It's a local path
+                        self.diarization_pipeline = Pipeline.from_pretrained(model_name)
+                    else:
+                        # It's a Hugging Face model ID
+                        self.diarization_pipeline = Pipeline.from_pretrained(
+                            model_name,
+                            use_auth_token=self.huggingface_token
+                        )
                     
                     # Set the clustering threshold parameter for the pipeline
                     # In newer PyAnnote versions, we need to set this as a parameter of the pipeline
@@ -228,10 +234,16 @@ class SpeakerDiarizer:
             for model_name in vad_models:
                 try:
                     self.log(logging.DEBUG, f"Trying to load VAD model: {model_name}")  # 2025-04-24 -JS
-                    self.vad_pipeline = Pipeline.from_pretrained(
-                        model_name,
-                        use_auth_token=self.huggingface_token
-                    )
+                    # Ensure model_name is treated as a Hugging Face model ID, not a local path
+                    if os.path.exists(model_name):
+                        # It's a local path
+                        self.vad_pipeline = Pipeline.from_pretrained(model_name)
+                    else:
+                        # It's a Hugging Face model ID
+                        self.vad_pipeline = Pipeline.from_pretrained(
+                            model_name,
+                            use_auth_token=self.huggingface_token
+                        )
                     self.log(logging.DEBUG, f"Successfully loaded VAD model: {model_name}")  # 2025-04-24 -JS
                     break
                 except Exception as e:
@@ -284,10 +296,16 @@ class SpeakerDiarizer:
                 for model_name in segmentation_models:
                     try:
                         self.log(logging.DEBUG, f"Trying to load segmentation model: {model_name}")  # 2025-04-24 -JS
-                        self.segmentation_pipeline = Pipeline.from_pretrained(
-                            model_name,
-                            use_auth_token=self.huggingface_token
-                        )
+                        # Ensure model_name is treated as a Hugging Face model ID, not a local path
+                        if os.path.exists(model_name):
+                            # It's a local path
+                            self.segmentation_pipeline = Pipeline.from_pretrained(model_name)
+                        else:
+                            # It's a Hugging Face model ID
+                            self.segmentation_pipeline = Pipeline.from_pretrained(
+                                model_name,
+                                use_auth_token=self.huggingface_token
+                            )
                         self.log(logging.DEBUG, f"Successfully loaded segmentation model: {model_name}")  # 2025-04-24 -JS
                         break
                     except Exception as e:
