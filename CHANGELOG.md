@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.063] - 2025-04-24
+
+### Changed
+- Added automatic volume compensation after filtering steps to maintain consistent audio levels
+- Added 6dB gain after highpass filter and 4dB gain after lowpass filter
+- Improved audio quality for transcription by preventing volume loss during filtering
+
 ## [0.0.062] - 2025-04-24
 
 ### Changed

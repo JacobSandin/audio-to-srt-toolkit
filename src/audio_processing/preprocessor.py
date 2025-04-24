@@ -36,7 +36,7 @@ class AudioPreprocessor:
         self.lowpass_cutoff = self.config.get('lowpass_cutoff', 8000)
         self.compression_threshold = self.config.get('compression_threshold', -10.0)
         self.compression_ratio = self.config.get('compression_ratio', 2.0)
-        self.default_gain = self.config.get('default_gain', 3.0)  # +3dB gain
+        self.default_gain = self.config.get('default_gain', 8.0)  # +3dB gain
         
         # Debug settings
         self.debug_mode = self.config.get('debug', False)
@@ -355,16 +355,26 @@ class AudioPreprocessor:
             sample_rate = audio.frame_rate
             self.log(logging.INFO, f"Audio loaded: {len(audio)/1000:.2f} seconds, {sample_rate}Hz sample rate")
             
-            # Apply processing steps and save debug files for each step
+            # Apply processing steps with volume compensation and save debug files for each step
             self.log(logging.INFO, f"Applying high-pass filter (cutoff: {self.highpass_cutoff}Hz)...")
             audio = self.apply_highpass(audio, cutoff=self.highpass_cutoff, sample_rate=sample_rate)
+            
+            # Compensate for volume loss after highpass filter
+            # 2025-04-24 -JS
+            self.log(logging.INFO, f"Compensating for volume loss after high-pass filter...")
+            audio = self.adjust_volume(audio, gain_db=6.0)  # Add 6dB to compensate for highpass filtering
             self._save_debug_file(audio, input_file, "highpass")
-            self.log(logging.INFO, f"High-pass filter applied successfully")
+            self.log(logging.INFO, f"High-pass filter applied successfully with volume compensation")
             
             self.log(logging.INFO, f"Applying low-pass filter (cutoff: {self.lowpass_cutoff}Hz)...")
             audio = self.apply_lowpass(audio, cutoff=self.lowpass_cutoff, sample_rate=sample_rate)
+            
+            # Compensate for volume loss after lowpass filter
+            # 2025-04-24 -JS
+            self.log(logging.INFO, f"Compensating for volume loss after low-pass filter...")
+            audio = self.adjust_volume(audio, gain_db=4.0)  # Add 4dB to compensate for lowpass filtering
             self._save_debug_file(audio, input_file, "lowpass")
-            self.log(logging.INFO, f"Low-pass filter applied successfully")
+            self.log(logging.INFO, f"Low-pass filter applied successfully with volume compensation")
             
             self.log(logging.INFO, f"Applying compression (threshold: {self.compression_threshold}dB, ratio: {self.compression_ratio})...")
             audio = self.apply_compression(audio)
