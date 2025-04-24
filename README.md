@@ -120,6 +120,15 @@ The `audio_toolkit.py` script provides a unified command-line interface for all 
 # With debug mode (saves intermediate files for each processing step)
 ./audio_toolkit.py --input-audio your_audio_file.mp3 --debug
 
+# List all available processing steps that can be skipped
+./audio_toolkit.py --list-steps
+
+# Skip specific processing steps (e.g., highpass and lowpass filters)
+./audio_toolkit.py --input-audio your_audio_file.mp3 --skip-steps highpass,lowpass
+
+# Use vocals file directly for transcription (skip post-processing steps)
+./audio_toolkit.py --input-audio your_audio_file.mp3 --use-vocals-directly
+
 # Combined preprocessing, diarization, and SRT generation with debug output
 ./audio_toolkit.py --input-audio your_audio_file.mp3 --diarize --generate-srt --debug
 
@@ -195,6 +204,16 @@ The toolkit implements a comprehensive audio processing pipeline optimized for S
 ```
 Input Audio → High-Quality WAV → Vocal Separation → Filtering → Normalization → Compression → Volume Adjustment → Diarization → SRT Generation
 ```
+
+### Flexible Processing Options
+
+The toolkit provides several options to customize the processing pipeline based on your audio quality needs:
+
+- **Selective Step Skipping**: Use `--skip-steps` to skip specific processing steps (e.g., `--skip-steps highpass,lowpass`) when they might degrade audio quality
+- **Direct Vocals Usage**: Use `--use-vocals-directly` to skip all post-processing steps and use the vocals file directly for transcription
+- **Step Listing**: Use `--list-steps` to see all available processing steps that can be skipped
+
+These options are particularly useful when working with high-quality audio recordings where certain processing steps might remove important dialect characteristics.
 
 ### Detailed Processing Steps
 

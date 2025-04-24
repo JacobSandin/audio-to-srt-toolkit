@@ -333,7 +333,9 @@ class AudioPreprocessor:
                 debug_path = os.path.join(self.debug_dir, debug_filename)
                 
                 # Export debug file in WAV format for better quality
-                audio.export(debug_path, format="wav")  # 2025-04-23 - JS
+                # Use with statement to ensure file is properly closed
+                with open(debug_path, 'wb') as f:
+                    audio.export(f, format="wav")  # 2025-04-23 - JS
                 self.log(logging.DEBUG, f"Saved debug file for {step_name}: {debug_path}")
             
         except Exception as e:
@@ -447,7 +449,9 @@ class AudioPreprocessor:
             
             # Save the final processed audio
             self.log(logging.DEBUG, f"Saving processed audio to {output_file}")
-            audio.export(output_file, format="wav")
+            # Use with statement to ensure file is properly closed
+            with open(output_file, 'wb') as f:
+                audio.export(f, format="wav")
             
             self.log(logging.INFO, f"Saved enhanced audio to {os.path.basename(output_file)}")
             return True
