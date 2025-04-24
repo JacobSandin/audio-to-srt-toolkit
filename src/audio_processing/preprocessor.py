@@ -765,9 +765,10 @@ class AudioPreprocessor:
                 
                 self.log(logging.DEBUG, f"Running command: {' '.join(cmd)}")
                 
-                # Use subprocess.run with stdout capture for testing compatibility
-                # In production, this still allows tqdm to control the terminal
-                result = subprocess.run(cmd, capture_output=True, text=False)
+                # 2025-04-25 -JS - Allow progress bar output to be displayed
+                # Don't capture output in production to show the Demucs progress bar
+                # Use text=True to ensure proper encoding of output
+                result = subprocess.run(cmd, capture_output=False, text=True)
                 
                 if result.returncode != 0:
                     self.log(logging.ERROR, f"Demucs failed with return code {result.returncode}")

@@ -24,7 +24,7 @@ The project contains the following key components:
 - **Speaker Diarization**: Separate audio by speaker using advanced models
 - **Voice Activity Detection**: Identify speech regions and filter out background noise
 - **Multi-stage Processing**: Combine specialized models for better results
-- **GPU Optimization**: Utilize GPU acceleration for faster processing
+- **GPU Optimization**: Utilize GPU acceleration for faster processing with dynamic memory management
 - **Swedish Dialect Optimization**: Special parameters tuned for similar Swedish dialects
 - **Debug Mode**: Save intermediate files at each processing step for troubleshooting
 
@@ -140,6 +140,28 @@ The `audio_toolkit.py` script provides a unified command-line interface for all 
 
 # Continue processing with debug files only (useful for troubleshooting)
 ./audio_toolkit.py --continue-from diarization --continue-folder /path/to/output/20250424_123456_filename --debug-files-only --speaker-count 3
+```
+
+## GPU Acceleration and Optimization
+
+The toolkit now features advanced GPU optimization for both diarization models and Demucs vocal separation:
+
+### Demucs GPU Optimization
+
+- **Dynamic Memory Management**: Automatically adjusts processing parameters based on available GPU memory
+- **Tiered Memory Settings**: Optimized configurations for different GPU capacities (16GB+, 8-16GB, 4-8GB, <4GB)
+- **Segment Overlap**: Implements variable overlap parameters (0.1-0.25) for improved quality without memory issues
+- **Float32 Precision**: Uses optimized floating-point precision for better GPU performance
+- **Parallel Processing**: Configures optimal thread count for CPU/GPU parallelization
+
+To test GPU performance with Demucs:
+
+```bash
+# Test GPU acceleration with a 60-second sample
+python test_demucs_gpu.py --duration 60
+
+# Process a specific audio file with GPU monitoring
+python test_demucs_gpu.py --input your_audio_file.mp3 --duration 120
 ```
 
 ## Handling Interruptions and Crashes

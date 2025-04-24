@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.077] - 2025-04-25
+
+### Added
+- Enhanced GPU utilization for Demucs with dynamic memory management
+- Added tiered memory settings based on GPU capacity (16GB+, 8-16GB, 4-8GB, <4GB)
+- Implemented segment overlap parameters (0.1-0.25) for improved quality
+- Created test script with real-time GPU utilization monitoring
+- Added configurable test duration parameter for shorter test runs
+
+### Fixed
+- Resolved CUDA out-of-memory errors with conservative segmentation
+- Fixed float32 precision parameter for better GPU performance
+- Optimized thread count with -j parameter for parallel processing
+- Fixed duplicate subprocess import issue
+
 ## [0.0.076] - 2025-04-24
 
 ### Fixed
