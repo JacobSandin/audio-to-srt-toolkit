@@ -661,9 +661,12 @@ class AudioPreprocessor:
                 except ImportError:
                     self.log(logging.WARNING, "PyTorch not available, using CPU for Demucs")
                 
+                # 2025-04-24 -JS - Use mdx_extra_q model instead of htdemucs for better compatibility
+                # htdemucs has limitations on audio length and can fail with longer files
                 cmd = [
                     "demucs", 
                     "--two-stems=vocals",
+                    "-n", "mdx_extra_q",  # Use mdx_extra_q model which handles longer files better
                     "--verbose" # Enable verbose output
                 ]
                 

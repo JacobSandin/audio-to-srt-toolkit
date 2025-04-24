@@ -91,3 +91,29 @@ Higher highpass cutoffs (3000-4000Hz) significantly improve speech clarity and d
 2. Reduce audio quality (use 16-bit instead of 24-bit)
 3. Process shorter audio segments (split long recordings)
 4. Skip preprocessing if you've already processed the audio: `--skip-preprocessing`
+
+### Q: How does GPU memory affect Demucs vocal separation performance?
+
+The toolkit automatically optimizes Demucs settings based on your GPU memory:
+
+- **For GPUs with >8GB VRAM**: Uses `--no-split` to process the entire audio at once for best quality
+- **For GPUs with 4-8GB VRAM**: Uses `--segment 30` for 30-second segments (good balance of speed and memory usage)
+- **For GPUs with <4GB VRAM**: Uses `--segment 10` for 10-second segments (memory-efficient but slower)
+- **For CPU processing**: Uses `--segment 8` for 8-second segments (prevents memory issues)
+
+These settings are automatically applied when GPU is detected, but you can override them by modifying the `preprocessor.py` file if needed.
+
+### Q: Why does Demucs fail with "ValueError: Given length X is longer than training length Y"?
+
+This error occurs with the default `htdemucs` model (Hybrid Transformer Demucs) which has limitations on the maximum audio length it can process. The toolkit automatically uses the `mdx_extra_q` model instead, which handles longer files better.
+
+If you want to use a different Demucs model:
+
+1. Edit `preprocessor.py` and modify the `-n` parameter in the Demucs command
+2. Available models include:
+   - `mdx_extra_q` (default in our toolkit): Better for longer files
+   - `htdemucs`: Latest model, best quality for short files
+   - `mdx_q`: Older model with good performance
+   - `mdx`: Original model
+
+For very long audio files, you may also need to increase the segment size or process the file in smaller chunks.
