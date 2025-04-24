@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.067] - 2025-04-24
+
+### Fixed
+- Fixed Hugging Face authentication for model loading
+- Improved error handling for invalid model ID formats
+- Enhanced token retrieval from configuration to support multiple config formats
+- Added detailed logging for model loading to aid troubleshooting
+- Improved validation of model ID formats before attempting to load them
+
 ## [0.0.066] - 2025-04-24
 
 ### Fixed

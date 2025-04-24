@@ -3,7 +3,7 @@
 # Handles audio preprocessing, diarization, and SRT creation
 # 2025-04-23 -JS
 
-__version__ = "0.0.054"  # Version should match CHANGELOG.md
+__version__ = "0.0.067"  # Version should match CHANGELOG.md
 
 import os
 import sys
@@ -791,9 +791,15 @@ def process_audio(args):
             'max_speakers': args.max_speakers,
             'clustering_threshold': args.clustering_threshold,
             'use_gpu': torch.cuda.is_available(),
-            'huggingface_token': hf_token,
-            'batch_size': 32
+            'batch_size': 32,
+            # Pass the entire config_data to ensure authentication is properly accessed
+            'authentication': {
+                'huggingface_token': hf_token
+            }
         }
+        
+        # Also pass the token directly to maintain backward compatibility
+        diarization_config['huggingface_token'] = hf_token
         
         # Override speaker count if specified
         # 2025-04-24 -JS

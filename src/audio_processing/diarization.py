@@ -62,7 +62,19 @@ class SpeakerDiarizer:
         self.max_speakers = self.config.get('max_speakers', 4)
         self.clustering_threshold = self.config.get('clustering_threshold', 0.65)
         self.use_gpu = self.config.get('use_gpu', torch.cuda.is_available())
-        self.huggingface_token = self.config.get('huggingface_token', os.environ.get('HF_TOKEN'))
+        
+        # Properly retrieve the Hugging Face token from the configuration
+        # First check if it's directly in the config
+        self.huggingface_token = self.config.get('huggingface_token')
+        
+        # If not found, check if it's in the authentication section (new structure)
+        if not self.huggingface_token and isinstance(self.config, dict) and 'authentication' in self.config:
+            self.huggingface_token = self.config['authentication'].get('huggingface_token')
+        
+        # If still not found, try environment variable
+        if not self.huggingface_token:
+            self.huggingface_token = os.environ.get('HF_TOKEN')
+            
         self.batch_size = self.config.get('batch_size', 32)
         self.debug = self.config.get('debug', False)
         self.debug_dir = self.config.get('debug_dir', None)
@@ -153,10 +165,18 @@ class SpeakerDiarizer:
                         self.diarization_pipeline = Pipeline.from_pretrained(model_name)
                     else:
                         # It's a Hugging Face model ID
-                        self.diarization_pipeline = Pipeline.from_pretrained(
-                            model_name,
-                            use_auth_token=self.huggingface_token
-                        )
+                        # Check if the model name is in the correct format (namespace/repo_name)
+                        if '/' in model_name and not model_name.startswith('/'):
+                            # It's a valid Hugging Face model ID
+                            self.log(logging.DEBUG, f"Loading Hugging Face diarization model: {model_name} with token: {'Present' if self.huggingface_token else 'Missing'}")
+                            self.diarization_pipeline = Pipeline.from_pretrained(
+                                model_name,
+                                use_auth_token=self.huggingface_token
+                            )
+                        else:
+                            # Invalid format for a Hugging Face model ID
+                            self.log(logging.WARNING, f"Invalid Hugging Face diarization model ID format: {model_name}")
+                            continue
                     
                     # Set the clustering threshold parameter for the pipeline
                     # In newer PyAnnote versions, we need to set this as a parameter of the pipeline
@@ -241,10 +261,18 @@ class SpeakerDiarizer:
                         self.vad_pipeline = Pipeline.from_pretrained(model_name)
                     else:
                         # It's a Hugging Face model ID
-                        self.vad_pipeline = Pipeline.from_pretrained(
-                            model_name,
-                            use_auth_token=self.huggingface_token
-                        )
+                        # Check if the model name is in the correct format (namespace/repo_name)
+                        if '/' in model_name and not model_name.startswith('/'):
+                            # It's a valid Hugging Face model ID
+                            self.log(logging.DEBUG, f"Loading Hugging Face VAD model: {model_name} with token: {'Present' if self.huggingface_token else 'Missing'}")
+                            self.vad_pipeline = Pipeline.from_pretrained(
+                                model_name,
+                                use_auth_token=self.huggingface_token
+                            )
+                        else:
+                            # Invalid format for a Hugging Face model ID
+                            self.log(logging.WARNING, f"Invalid Hugging Face VAD model ID format: {model_name}")
+                            continue
                     self.log(logging.DEBUG, f"Successfully loaded VAD model: {model_name}")  # 2025-04-24 -JS
                     break
                 except Exception as e:
@@ -303,10 +331,18 @@ class SpeakerDiarizer:
                             self.segmentation_pipeline = Pipeline.from_pretrained(model_name)
                         else:
                             # It's a Hugging Face model ID
-                            self.segmentation_pipeline = Pipeline.from_pretrained(
-                                model_name,
-                                use_auth_token=self.huggingface_token
-                            )
+                            # Check if the model name is in the correct format (namespace/repo_name)
+                            if '/' in model_name and not model_name.startswith('/'):
+                                # It's a valid Hugging Face model ID
+                                self.log(logging.DEBUG, f"Loading Hugging Face model: {model_name} with token: {'Present' if self.huggingface_token else 'Missing'}")
+                                self.segmentation_pipeline = Pipeline.from_pretrained(
+                                    model_name,
+                                    use_auth_token=self.huggingface_token
+                                )
+                            else:
+                                # Invalid format for a Hugging Face model ID
+                                self.log(logging.WARNING, f"Invalid Hugging Face model ID format: {model_name}")
+                                continue
                         self.log(logging.DEBUG, f"Successfully loaded segmentation model: {model_name}")  # 2025-04-24 -JS
                         break
                     except Exception as e:
