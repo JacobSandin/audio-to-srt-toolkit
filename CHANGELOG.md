@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.060] - 2025-04-24
+
+### Added
+- Added `--srt-remove-empty` option to explicitly control removal of empty segments
+- Added `--srt-empty-placeholder` option with default value "[UNRECOGNIZABLE]" for empty segments
+
+### Fixed
+- Fixed issue where empty segments weren't included in SRT output even with --srt-min-duration 0
+- Made empty segment filtering respect the --srt-min-duration parameter
+- Ensured empty segments are properly removed when --srt-remove-empty is used or --srt-min-duration > 0, regardless of placeholder settings
+
+## [0.0.059] - 2025-04-24
+
+### Changed
+- Increased default volume gain from 3.0 dB to 12.0 dB for better audio clarity
+
 ## [0.0.058] - 2025-04-24
 
 ### Added

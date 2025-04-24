@@ -171,7 +171,9 @@ def setup_logging(args):
     log(logging.DEBUG, f"Logging initialized. Log file: {log_file}")
 
 
-def parse_args():
+def parse_args(args=None):
+    # args parameter allows for testing with custom arguments
+    # 2025-04-24 -JS
     """
     Parse command-line arguments.
     
@@ -329,6 +331,19 @@ def parse_args():
         help='Remove speaker labels from SRT output'
     )
     
+    parser.add_argument(
+        '--srt-remove-empty',
+        action='store_true',
+        help='Remove empty segments from SRT output even with --srt-min-duration 0'
+    )
+    
+    parser.add_argument(
+        '--srt-empty-placeholder',
+        type=str,
+        default='[UNRECOGNIZABLE]',
+        help='Text to use for empty segments (default: "[UNRECOGNIZABLE]")'
+    )
+    
     # WAV conversion parameters
     parser.add_argument(
         '--bit-depth',
@@ -378,8 +393,8 @@ def parse_args():
     parser.add_argument(
         '--volume-gain',
         type=float,
-        default=3.0,
-        help='Volume gain in dB (default: 3.0)'
+        default=12.0,
+        help='Volume gain in dB (default: 12.0)'
     )
     
     parser.add_argument(
@@ -416,7 +431,9 @@ def parse_args():
         help='Specify the number of speakers for diarization (overrides config)'
     )
     
-    args = parser.parse_args()
+    # Use provided args for testing or default to sys.argv
+    # 2025-04-24 -JS
+    args = parser.parse_args(args)
     
     # 2025-04-24 -JS
     # Validate continuation requirements
@@ -887,7 +904,9 @@ def process_audio(args):
                         'post_padding': args.srt_post,  # Add padding after segment
                         'confidence_threshold': args.confidence_threshold,  # Minimum confidence threshold
                         'min_segment_duration': args.srt_min_duration,  # Minimum segment duration
-                        'include_speaker': not args.srt_no_speaker  # Whether to include speaker labels
+                        'include_speaker': not args.srt_no_speaker,  # Whether to include speaker labels
+                        'remove_empty_segments': args.srt_remove_empty,  # Whether to remove empty segments
+                        'empty_placeholder': args.srt_empty_placeholder  # Placeholder text for empty segments
                     })
                     
                     # Generate SRT file path

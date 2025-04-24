@@ -57,6 +57,14 @@ class WhisperTranscriber:
         # 2025-04-24 -JS
         self.include_speaker = self.config.get('include_speaker', True)  # Include speaker labels by default
         
+        # Whether to remove empty segments from SRT output
+        # 2025-04-24 -JS
+        self.remove_empty_segments = self.config.get('remove_empty_segments', False)  # Don't remove empty segments by default
+        
+        # Placeholder text for empty segments
+        # 2025-04-24 -JS
+        self.empty_placeholder = self.config.get('empty_placeholder', '[UNRECOGNIZABLE]')  # Default is [UNRECOGNIZABLE]
+        
         # Hallucination patterns to filter out
         # 2025-04-24 -JS
         self.hallucination_patterns = [
@@ -268,7 +276,7 @@ class WhisperTranscriber:
                     word_timestamps=True,
                     condition_on_previous_text=False,  # Don't condition on previous text to avoid bias
                     vad_filter=True,  # Filter out non-speech
-                    vad_parameters={"threshold": 0.25}  # Even lower VAD threshold to catch more speech
+                    vad_parameters={"threshold": 0.01}  # Even lower VAD threshold to catch more speech
                 )
                 
                 # Get the text
@@ -369,6 +377,11 @@ class WhisperTranscriber:
             speaker = segment['speaker']
             text = segment.get('text', '')
             
+            # Use placeholder for empty segments if specified
+            # 2025-04-24 -JS
+            if not text.strip() and self.empty_placeholder:
+                text = self.empty_placeholder
+            
             # Format timestamps
             start = self.format_timestamp(start_sec)
             end = self.format_timestamp(end_sec)
@@ -449,9 +462,9 @@ class WhisperTranscriber:
                     # 2025-04-24 -JS
                     text = self.transcribe_segment(audio, segment)
                     
-                    # Only skip extremely short segments with no meaningful content
-                    # 2025-04-24 -JS - Made less aggressive to avoid filtering important content
-                    if segment_duration < 0.15 and (not text or len(text.strip()) < 2):  # Only filter extremely short segments
+                    # Skip extremely short segments with no meaningful content based on settings
+                    # 2025-04-24 -JS - Always respect remove_empty_segments and min_segment_duration settings
+                    if (self.min_segment_duration > 0 or self.remove_empty_segments) and segment_duration < 0.15 and (not text or len(text.strip()) < 2):
                         self.log(logging.DEBUG, f"Skipping very short segment {i+1} (duration: {segment_duration:.2f}s) with no meaningful content")
                         filtered_count += 1
                         continue
@@ -459,9 +472,9 @@ class WhisperTranscriber:
                     # Update segment with transcribed text
                     segment['text'] = text if text else ""
                     
-                    # Skip only completely empty segments after transcription
-                    # 2025-04-24 -JS
-                    if not segment['text'].strip():
+                    # Skip completely empty segments after transcription based on settings
+                    # 2025-04-24 -JS - Always respect remove_empty_segments and min_segment_duration settings
+                    if (self.min_segment_duration > 0 or self.remove_empty_segments) and not segment['text'].strip():
                         self.log(logging.DEBUG, f"Skipping segment {i+1} with empty transcription")
                         filtered_count += 1
                         continue
