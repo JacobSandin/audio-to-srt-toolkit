@@ -709,6 +709,7 @@ def process_audio(args):
         
     # Define output file path for preprocessed audio
     # 2025-04-24 -JS
+    # Files inside the timestamped directory should not have timestamps themselves
     output_file = os.path.join(run_dir, f"{input_basename}_processed.wav")
     
     # Configure audio preprocessor

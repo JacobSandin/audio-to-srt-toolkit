@@ -361,17 +361,20 @@ class AudioPreprocessor:
         # Get base name of input file without extension
         base_name = os.path.splitext(os.path.basename(input_file))[0]
         
-        # If no timestamp in the base_name, add one at the beginning for output_file
-        if not timestamp_pattern.search(base_name) and not timestamp_pattern.search(os.path.basename(output_file)):
+        # Check if the output directory already has a timestamp
+        output_dir = os.path.dirname(output_file)
+        dir_has_timestamp = timestamp_pattern.search(os.path.basename(output_dir))
+        
+        # If the directory doesn't have a timestamp, add timestamp to the output file
+        # If the directory already has a timestamp, don't add timestamp to files inside it
+        if not dir_has_timestamp and not timestamp_pattern.search(base_name) and not timestamp_pattern.search(os.path.basename(output_file)):
             timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
             # Update output_file with timestamped name if it doesn't already have a timestamp
-            output_dir = os.path.dirname(output_file)
             output_filename = os.path.basename(output_file)
             output_base = os.path.splitext(output_filename)[0]
             output_ext = os.path.splitext(output_filename)[1]
-            if not timestamp_pattern.search(output_base):
-                output_file = os.path.join(output_dir, f"{timestamp}_{output_base}{output_ext}")
-                self.log(logging.DEBUG, f"Updated output file path with timestamp: {output_file}")
+            output_file = os.path.join(output_dir, f"{timestamp}_{output_base}{output_ext}")
+            self.log(logging.DEBUG, f"Updated output file path with timestamp: {output_file}")
         
         try:
             self.log(logging.INFO, f"Running audio enhancement step")
