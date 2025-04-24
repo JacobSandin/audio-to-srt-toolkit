@@ -725,13 +725,20 @@ class AudioPreprocessor:
                     # Note: Demucs doesn't have a batch-size parameter, but uses segment size for memory control
                     try:
                         gpu_mem = torch.cuda.get_device_properties(0).total_memory / (1024 ** 3)  # in GB
-                        if gpu_mem > 8:  # If more than 8GB VRAM
-                            # For high memory GPUs, we can use larger segments or no split
+                        
+                        # 2025-04-25 -JS - More conservative memory settings to prevent OOM errors
+                        # Even with 11GB VRAM, we've seen OOM errors with --no-split
+                        if gpu_mem > 16:  # Only use no-split with very high memory GPUs (16GB+)
+                            # For very high memory GPUs, we can use no split
                             cmd.append("--no-split")  # Process the entire audio at once
-                            # Add overlap for better quality with high-memory GPUs
+                            # Add overlap for better quality
                             cmd.extend(["--overlap", "0.25"])  # 25% overlap between segments
+                        elif gpu_mem > 8:  # For high memory GPUs (8-16GB)
+                            # Use larger segments but still segment to avoid OOM
+                            cmd.extend(["--segment", "60"])  # Process in 60-second segments
+                            cmd.extend(["--overlap", "0.2"])  # 20% overlap between segments
                         elif gpu_mem > 4:  # If more than 4GB VRAM
-                            # For medium memory GPUs, use larger segments
+                            # For medium memory GPUs, use medium segments
                             cmd.extend(["--segment", "30"])  # Process in 30-second segments
                             # Add overlap for better quality with medium-memory GPUs
                             cmd.extend(["--overlap", "0.1"])  # 10% overlap between segments
